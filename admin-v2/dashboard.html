@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — PeedsPark Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="container admin-header-inner">
+    <a href="dashboard.html" class="logo">Peeds<span>Park</span> <span class="admin-tag">Admin</span></a>
+    <div class="admin-user">
+      <span id="staffName">Loading…</span>
+      <span id="staffRole" class="role-badge"></span>
+      <button id="logoutBtn" class="btn btn-outline-dark">Log Out</button>
+    </div>
+  </div>
+</header>
+
+<main class="container admin-main">
+  <div id="notAuthorised" hidden class="policy-card" style="border-left:6px solid var(--coral); max-width:520px; margin:60px auto;">
+    <h3>Not authorised</h3>
+    <p>This account isn't set up as PeedsPark staff. If this is a mistake, ask an Admin to add you.</p>
+    <a class="btn btn-primary" href="index.html">Back to login</a>
+  </div>
+
+  <div id="dashboardContent" hidden>
+    <h2>Welcome back<span id="welcomeName"></span></h2>
+    <p class="muted">Phases 2–6 will fill these in with live data. Phase 1 confirms your role-based access works.</p>
+
+    <div class="card-grid" style="margin-top:24px;">
+      <a class="facility-card card-coral admin-tile" href="#">
+        <h3>📋 Enquiries</h3>
+        <p>View and update customer enquiries.</p>
+        <span class="tile-status">Coming in Phase 2</span>
+      </a>
+      <a class="facility-card card-teal admin-tile" href="#">
+        <h3>🏛️ Hall &amp; Lawn Bookings</h3>
+        <p>Approve, reject, cancel — with block/unblock.</p>
+        <span class="tile-status">Coming in Phase 3</span>
+      </a>
+      <a class="facility-card card-gold admin-tile" href="#">
+        <h3>🏊 Pool &amp; Badminton</h3>
+        <p>Hourly bookings, capacity, member hours.</p>
+        <span class="tile-status">Coming in Phase 4</span>
+      </a>
+      <a id="staffTile" class="facility-card card-navy admin-tile" href="#" hidden>
+        <h3>👥 Staff Management</h3>
+        <p>Admin only — invite and manage staff accounts.</p>
+        <span class="tile-status">Coming in Phase 1b</span>
+      </a>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../js/supabase-client.js"></script>
+<script src="js/admin-auth.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>
