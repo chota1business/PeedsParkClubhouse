@@ -86,11 +86,22 @@ function setupEnquiryForm() {
     submitBtn.disabled = true;
     submitBtn.textContent = "Sending...";
 
-    const { data: inserted, error } = await supabaseClient
-      .from("enquiries")
-      .insert(payload)
-      .select()
-      .single();
+    // Goes through the submit_enquiry() database function rather than a plain
+    // insert — anonymous visitors correctly have no read access to the
+    // enquiries table (that's what keeps other customers' details private),
+    // and Postgres requires a row to be select-visible to come back from
+    // `.insert().select()`. The function runs as its owner, inserts safely,
+    // and returns only the generated enquiry code — nothing else.
+    const { data: result, error } = await supabaseClient.rpc("submit_enquiry", {
+      p_customer_name: payload.customer_name,
+      p_phone: payload.phone,
+      p_email: payload.email,
+      p_facility_id: payload.facility_id,
+      p_preferred_date: payload.preferred_date,
+      p_guests: payload.guests,
+      p_message: payload.message,
+      p_source: payload.source,
+    });
 
     submitBtn.disabled = false;
     submitBtn.textContent = "Send Enquiry";
@@ -105,7 +116,8 @@ function setupEnquiryForm() {
       return;
     }
 
-    showEnquiryConfirmation(inserted, payload);
+    const enquiryCode = result?.[0]?.enquiry_code;
+    showEnquiryConfirmation({ enquiry_code: enquiryCode }, payload);
     form.reset();
   });
 }

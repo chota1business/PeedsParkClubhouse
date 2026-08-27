@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pool &amp; Badminton Bookings — PeedsPark Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="container admin-header-inner">
+    <a href="dashboard.html" class="logo">Peeds<span>Park</span> <span class="admin-tag">Admin</span></a>
+    <div class="admin-user">
+      <span id="staffName">Loading…</span>
+      <span id="staffRole" class="role-badge"></span>
+      <button id="logoutBtn" class="btn btn-outline-dark">Log Out</button>
+    </div>
+  </div>
+</header>
+
+<main class="container admin-main">
+  <div id="notAuthorised" hidden class="policy-card" style="border-left:6px solid var(--coral); max-width:520px; margin:60px auto;">
+    <h3>Not authorised</h3>
+    <p>This account isn't set up as PeedsPark staff.</p>
+    <a class="btn btn-primary" href="index.html">Back to login</a>
+  </div>
+
+  <div id="pageContent" hidden>
+    <div class="page-head">
+      <a href="dashboard.html" class="back-link">&larr; Dashboard</a>
+      <h2>🏊 Pool &amp; Badminton Bookings</h2>
+    </div>
+
+    <div class="filter-row">
+      <button class="filter-chip active" data-facility="all">All Facilities</button>
+      <button class="filter-chip" data-facility="pool">🏊 Pool</button>
+      <button class="filter-chip" data-facility="badminton">🏸 Badminton (both courts)</button>
+    </div>
+    <div class="filter-row">
+      <button class="filter-chip active" data-status="all">All</button>
+      <button class="filter-chip" data-status="pending">Pending</button>
+      <button class="filter-chip" data-status="approved">Approved</button>
+      <button class="filter-chip" data-status="rejected">Rejected</button>
+      <button class="filter-chip" data-status="cancelled">Cancelled</button>
+    </div>
+
+    <p class="muted small" style="margin-top:-4px;">Pool bookings share capacity by guest count; badminton and exclusive-mode pool slots block the whole time window — the system already prevents double-booking, so approving here just confirms it.</p>
+
+    <div id="bookingList" class="enquiry-list">
+      <p class="muted center" style="padding:40px;">Loading bookings…</p>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../js/supabase-client.js"></script>
+<script src="js/admin-auth.js"></script>
+<script src="js/hourly-bookings.js"></script>
+</body>
+</html>

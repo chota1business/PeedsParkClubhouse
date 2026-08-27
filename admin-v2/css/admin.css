@@ -22,3 +22,38 @@
 .admin-tile { display: block; text-decoration: none; }
 .admin-tile p { color: var(--muted); }
 .tile-status { display: inline-block; margin-top: 10px; font-size: 0.8rem; font-weight: 700; color: var(--coral-dark); background: #FFF0E8; padding: 4px 10px; border-radius: 999px; }
+.tile-status.ready { color: var(--teal-dark); background: #E7F5EE; }
+
+/* Shared admin page chrome */
+.page-head { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.back-link { color: var(--teal-dark); font-weight: 700; }
+.page-head h2 { margin: 0; }
+
+/* Outline button for use on light/white backgrounds (admin-header's version is white-on-transparent for the dark header) */
+.enquiry-card-actions .btn-outline-dark,
+.filter-row .btn-outline-dark {
+  border-color: var(--navy); color: var(--navy);
+}
+
+/* Filter chips */
+.filter-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+.filter-chip {
+  background: var(--white); border: 2px solid #E4E0D8; color: var(--navy);
+  padding: 8px 16px; border-radius: 999px; font-weight: 700; cursor: pointer; font-size: 0.9rem;
+}
+.filter-chip.active { background: var(--navy); border-color: var(--navy); color: var(--white); }
+
+/* Enquiry / booking list cards */
+.enquiry-list { display: flex; flex-direction: column; gap: 14px; }
+.enquiry-card {
+  background: var(--white); border-radius: 12px; box-shadow: var(--shadow);
+  border-left: 6px solid #999; padding: 16px 18px;
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;
+}
+.enquiry-card-main { flex: 1; min-width: 220px; }
+.enquiry-message { margin: 8px 0 0; color: var(--text); }
+.enquiry-card-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.enquiry-card-actions select.status-select {
+  padding: 8px 10px; border-radius: 8px; border: 2px solid #E4E0D8; font-weight: 700; font-size: 0.85rem;
+}
+.btn-sm { padding: 8px 14px; font-size: 0.85rem; }
