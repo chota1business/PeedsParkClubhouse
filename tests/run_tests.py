@@ -278,6 +278,104 @@ def run():
             record("G-error", "Slot-picker test sequence completed without exceptions", False, str(e))
         page.close()
 
+        # ---------- H. Phase 10: frontend UX fixes ported from the old site ----------
+        # H1/H2: phone field — live digit-only filtering + inline red error,
+        # never a native browser popup.
+        page = browser.new_page()
+        dialogs = []
+        page.on("dialog", lambda d: (dialogs.append(d.message), d.dismiss()))
+        page.goto(file_url("index.html"), wait_until="networkidle", timeout=15000)
+        page.fill("#enquiryPhone", "ab98-467/18106xyz")
+        phone_value = page.eval_on_selector("#enquiryPhone", "el => el.value")
+        record("H1", "Phone field strips non-digits and caps at 10 as you type",
+               phone_value == "9846718106", f"value={phone_value!r}")
+
+        page.fill("#enquiryForm [name=customer_name]", "Test User")
+        page.fill("#enquiryPhone", "12345")
+        page.wait_for_timeout(3100)  # clear the anti-bot minimum-fill-time guard first
+        page.click("#enquiryForm button[type=submit]")
+        page.wait_for_timeout(200)
+        note_visible = page.locator("#enquiryPhoneNote").is_visible()
+        note_text = page.inner_text("#enquiryPhoneNote") if note_visible else ""
+        record("H2", "Invalid phone shows an inline red error, not a native popup",
+               note_visible and "10-digit" in note_text and len(dialogs) == 0,
+               f"visible={note_visible} text={note_text!r} dialogs={dialogs}")
+        page.close()
+
+        # H3: an Available hourly slot whose start time has already passed
+        # today renders as "Past" (grey, not bookable), not a clickable
+        # "Request to Book" button.
+        page = browser.new_page()
+        now = time.localtime()
+        today_str = time.strftime("%Y-%m-%d", now)
+        past_hour = (now.tm_hour - 1) % 24
+        past_start = f"{past_hour:02d}:00"
+        future_hour = (now.tm_hour + 2) % 24
+        future_start = f"{future_hour:02d}:00"
+        page.add_init_script(f"""
+            window.supabase = {{
+              createClient: () => ({{
+                rpc: (fn, args) => Promise.resolve({{
+                  data: {{
+                    type: 'hourly', bookingModel: 'resource',
+                    slots: [
+                      {{ start: '{past_start}', end: '{(past_hour+1)%24:02d}:00', status: 'Available' }},
+                      {{ start: '{future_start}', end: '{(future_hour+1)%24:02d}:00', status: 'Available' }},
+                    ]
+                  }},
+                  error: null
+                }}),
+                auth: {{ getSession: () => Promise.resolve({{ data: {{ session: null }} }}) }},
+              }})
+            }};
+        """)
+        try:
+            page.goto(file_url("index.html"), wait_until="networkidle", timeout=15000)
+            page.select_option("#availFacility", "badminton_1")
+            page.fill("#availDate", today_str)
+            page.dispatch_event("#availDate", "change")
+            page.wait_for_timeout(300)
+            html = page.inner_html("#availabilityResult")
+            past_badged = "Past" in html
+            still_bookable_future = html.count("Request to Book") == 1  # only the future slot
+            record("H3", "An already-passed hourly slot today shows 'Past', not bookable",
+                   past_badged and still_bookable_future, html[:300])
+        except Exception as e:
+            record("H3", "An already-passed hourly slot today shows 'Past', not bookable", False, str(e))
+        page.close()
+
+        # H4: confirmation-first flow — a successful submission never opens
+        # a second tab/window on its own; it swaps the form for an on-page
+        # confirmation with its own WhatsApp button the customer clicks.
+        page = browser.new_page()
+        popped_up = []
+        page.add_init_script("""
+            window.supabase = {
+              createClient: () => ({
+                rpc: (fn, args) => Promise.resolve({ data: [{ enquiry_code: 'ENQ-TEST01' }], error: null }),
+                auth: { getSession: () => Promise.resolve({ data: { session: null } }) },
+              })
+            };
+        """)
+        page.on("popup", lambda p: popped_up.append(p.url))
+        page.on("dialog", lambda d: d.dismiss())  # safety net — none expected on a valid submission
+        try:
+            page.goto(file_url("index.html"), wait_until="networkidle", timeout=15000)
+            page.fill("#enquiryForm [name=customer_name]", "Test User")
+            page.fill("#enquiryPhone", "9846718106")
+            page.wait_for_timeout(3100)  # clear the anti-bot minimum-fill-time guard first
+            page.click("#enquiryForm button[type=submit]")
+            page.wait_for_timeout(500)
+            form_hidden = page.eval_on_selector("#enquiryForm", "el => el.hidden")
+            panel_visible = page.locator("#enquiryConfirmation").is_visible()
+            wa_present = page.locator("#enquiryConfirmation a[href*='wa.me']").count() > 0
+            record("H4", "Successful submission shows a confirmation panel, never auto-opens WhatsApp",
+                   form_hidden and panel_visible and wa_present and len(popped_up) == 0,
+                   f"form_hidden={form_hidden} panel_visible={panel_visible} wa_present={wa_present} popups={popped_up}")
+        except Exception as e:
+            record("H4", "Successful submission shows a confirmation panel, never auto-opens WhatsApp", False, str(e))
+        page.close()
+
         browser.close()
 
     total = len(results)

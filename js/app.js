@@ -17,6 +17,15 @@ document.addEventListener("DOMContentLoaded", () => {
     navToggle.addEventListener("click", () => mainNav.classList.toggle("open"));
   }
 
+  // Phase 10: live digit-only filtering + hard 10-char cap on every phone
+  // field, ported from the old Apps Script site's fix — stops the native
+  // "please match the requested format" browser popup from ever triggering,
+  // since the field can never hold anything but digits by the time it's
+  // submitted.
+  [["hallPhone", "hallPhoneNote"], ["hourlyPhone", "hourlyPhoneNote"], ["enquiryPhone", "enquiryPhoneNote"]].forEach(
+    ([inputId, noteId]) => setupPhoneField(inputId, noteId)
+  );
+
   setupHourlyFacilityToggle();
   setupHallBookingForm();
   setupHourlyBookingForm();
@@ -49,6 +58,33 @@ function isValidPhone(phone) {
   return /^[0-9]{10}$/.test(phone);
 }
 
+// Phase 10: strips anything non-numeric as the customer types or pastes,
+// and caps at 10 digits — same behaviour as the old site, so a pasted
+// "98467-18106" quietly becomes "9846718106" instead of failing validation.
+function setupPhoneField(inputId, noteId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const note = document.getElementById(noteId);
+  input.addEventListener("input", () => {
+    input.value = input.value.replace(/\D/g, "").slice(0, 10);
+    if (note) {
+      note.hidden = true;
+      note.textContent = "";
+    }
+  });
+}
+
+// Shows the "valid 10-digit mobile number" error inline under the given
+// field instead of a native alert() popup — ported from the old site's fix.
+function showPhoneError(noteId, inputId) {
+  const note = document.getElementById(noteId);
+  if (note) {
+    note.textContent = "Please enter a valid 10-digit mobile number.";
+    note.hidden = false;
+  }
+  document.getElementById(inputId)?.focus();
+}
+
 function setupEnquiryForm() {
   const form = document.getElementById("enquiryForm");
   if (!form) return;
@@ -70,7 +106,7 @@ function setupEnquiryForm() {
     const data = Object.fromEntries(new FormData(form).entries());
 
     if (!isValidPhone(data.phone)) {
-      alert("Please enter a valid 10-digit mobile number.");
+      showPhoneError("enquiryPhoneNote", "enquiryPhone");
       return;
     }
     if (!data.customer_name || data.customer_name.trim().length < 2) {
@@ -145,7 +181,13 @@ function detectSource() {
   return "other";
 }
 
+// Phase 10: confirmation-first flow, ported from the old Apps Script site's
+// fix — a successful submission no longer auto-opens a WhatsApp tab (that
+// read as broken on several phones/browsers: a blank popup, or blocked
+// entirely). Instead the form is swapped out for an on-page confirmation
+// with its own "Send WhatsApp Message" button the customer taps themselves.
 function showEnquiryConfirmation(row, payload) {
+  const form = document.getElementById("enquiryForm");
   const panel = document.getElementById("enquiryConfirmation");
   const waMessage = encodeURIComponent(
     `Hi PeedsPark! I just sent an enquiry (${row.enquiry_code}).\n` +
@@ -156,16 +198,17 @@ function showEnquiryConfirmation(row, payload) {
   );
   const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${waMessage}`;
 
+  panel.innerHTML = confirmationPanelHtml({
+    heading: "Enquiry received!",
+    reference: row.enquiry_code,
+    message: `Your enquiry for ${payload.facility_id || "PeedsPark"} is sent for confirmation.`,
+    waLink,
+    anotherText: "Send another enquiry",
+  });
   panel.hidden = false;
-  panel.innerHTML = `
-    ✅ Enquiry sent (${row.enquiry_code}). We'll get back to you shortly.<br>
-    <a class="btn btn-primary" style="margin-top:10px;" href="${waLink}" target="_blank" rel="noopener">
-      💬 Confirm on WhatsApp
-    </a>`;
+  form.hidden = true;
 
-  // Open WhatsApp automatically too, same as the original flow — the button
-  // above is the fallback for browsers/devices that block the auto-open.
-  window.open(waLink, "_blank");
+  wireSendAnotherLink(panel, form);
 }
 
 // Facility type isn't in the <select> — the RPC itself returns "type"
@@ -187,7 +230,24 @@ function statusBadgeStyle(status) {
   // booking yet — distinct from Booked/Full so it doesn't read as "someone
   // beat you to it" when actually nobody can book it right now.
   if (status === "Reserved") return "background:#E8DDEF;color:#5A3A78;"; // --plum tint
+  // Past = the slot's start time has already gone by today (client-side
+  // only — the RPC has no notion of "now") — ported from the old site's
+  // fix so an already-passed hour on today's date reads as Past, not a
+  // clickable Available slot.
+  if (status === "Past") return "background:#e0e0e0;color:#777777;";
   return "background:#F4CCCC;color:#9c2b2b;"; // Booked / Full
+}
+
+// Phase 10: true only when checking today's date and the slot's start time
+// has already gone by — ported from the old site's isPastSlot_(). The RPC
+// itself has no concept of "now", so this is applied client-side after the
+// response comes back.
+function isPastSlot(dateStr, startTime) {
+  const todayStr = new Date().toISOString().split("T")[0];
+  if (dateStr !== todayStr) return false;
+  const [h, m] = startTime.split(":").map(Number);
+  const now = new Date();
+  return h * 60 + m <= now.getHours() * 60 + now.getMinutes();
 }
 
 function slotBadgeHtml(status) {
@@ -231,6 +291,19 @@ async function refreshAvailabilityPicker() {
   if (!date) return;
 
   lastHourlyCheck = null;
+
+  // Past-date guard, ported from the old site's fix: the date input's
+  // `min` already stops the picker UI from offering a past date, but a
+  // manually-typed or pasted one on an older/unusual browser can still
+  // slip through — catch it here with a clear inline message rather than
+  // sending a doomed request.
+  const todayStr = new Date().toISOString().split("T")[0];
+  if (date < todayStr) {
+    resultBox.className = "availability-result busy";
+    resultBox.innerHTML = "Please choose today or a future date.";
+    return;
+  }
+
   resultBox.className = "availability-result";
   resultBox.innerHTML = "Checking...";
 
@@ -260,8 +333,14 @@ async function refreshAvailabilityPicker() {
   }
 
   if (data.type === "hourly") {
-    lastHourlyCheck = { facility, date, bookingModel: data.bookingModel, slots: data.slots };
-    const rows = data.slots.map((slot, index) => {
+    // Ported from the old site's fix: an Available slot whose start time
+    // has already passed today reads as Past, not a clickable Available
+    // slot — client-side only, since the RPC has no notion of "now".
+    const slots = data.slots.map((slot) =>
+      slot.status === "Available" && isPastSlot(date, slot.start) ? { ...slot, status: "Past" } : slot
+    );
+    lastHourlyCheck = { facility, date, bookingModel: data.bookingModel, slots };
+    const rows = slots.map((slot, index) => {
       const label = `${slot.start} – ${slot.end}` + (data.bookingModel === "capacity" && slot.status === "Available" ? ` (${slot.remaining} of ${slot.capacity} spots left)` : "");
       const attr = `data-hourly-facility="${facility}" data-hourly-date="${date}" data-hourly-index="${index}" data-hourly-start="${slot.start}"`;
       return slotRowHtml(label, slot.status, attr);
@@ -361,6 +440,7 @@ function revalidateHourlyDuration() {
     const s = lastHourlyCheck.slots[i];
     if (!s) { ok = false; message = "That's past closing time for this many hours."; break; }
     if (s.status === "Blocked") { ok = false; message = `${s.start}–${s.end} is blocked by management.`; break; }
+    if (s.status === "Past") { ok = false; message = `${s.start}–${s.end} has already passed today.`; break; }
     if (isPool) {
       if (mode === "exclusive" && s.remaining !== s.capacity) { ok = false; message = `${s.start}–${s.end} already has a shared booking — can't book Exclusive.`; break; }
       if (s.status === "Full") { ok = false; message = `${s.start}–${s.end} is already full.`; break; }
@@ -405,7 +485,7 @@ function setupHallBookingForm() {
 
     const data = Object.fromEntries(new FormData(form).entries());
     if (!isValidPhone(data.phone)) {
-      alert("Please enter a valid 10-digit mobile number.");
+      showPhoneError("hallPhoneNote", "hallPhone");
       return;
     }
     if (!isSupabaseReady()) return;
@@ -439,7 +519,7 @@ function setupHallBookingForm() {
     }
 
     const code = result?.[0]?.booking_code;
-    showBookingConfirmation("hallBookingConfirmation", code, data);
+    showBookingConfirmation("hallBookingForm", "hallBookingConfirmation", code, data);
     form.reset();
   });
 }
@@ -460,7 +540,7 @@ function setupHourlyBookingForm() {
 
     const data = Object.fromEntries(new FormData(form).entries());
     if (!isValidPhone(data.phone)) {
-      alert("Please enter a valid 10-digit mobile number.");
+      showPhoneError("hourlyPhoneNote", "hourlyPhone");
       return;
     }
     if (!isSupabaseReady()) return;
@@ -500,7 +580,7 @@ function setupHourlyBookingForm() {
     }
 
     const code = result?.[0]?.booking_code;
-    showBookingConfirmation("hourlyBookingConfirmation", code, { ...data, start_time: startTime, end_time: endTime });
+    showBookingConfirmation("hourlyBookingForm", "hourlyBookingConfirmation", code, { ...data, start_time: startTime, end_time: endTime });
     form.reset();
   });
 }
@@ -514,7 +594,8 @@ function addHours(time, hours) {
   return `${hh}:${mm}`;
 }
 
-function showBookingConfirmation(panelId, code, data) {
+function showBookingConfirmation(formId, panelId, code, data) {
+  const form = document.getElementById(formId);
   const panel = document.getElementById(panelId);
   if (!panel) return;
 
@@ -527,12 +608,45 @@ function showBookingConfirmation(panelId, code, data) {
     (data.start_time ? `Time: ${data.start_time}–${data.end_time}\n` : "")
   );
   const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${waMessage}`;
+  const dateText = data.booking_date ? `for ${data.booking_date}` : "";
 
+  panel.innerHTML = confirmationPanelHtml({
+    heading: "Booking request sent!",
+    reference: code,
+    message: `Your request for ${data.facility_id} ${dateText} is sent for confirmation.`,
+    waLink,
+    anotherText: "Make another request",
+  });
   panel.hidden = false;
-  panel.innerHTML = `
-    ✅ Booking requested (${code}). We'll confirm shortly.<br>
-    <a class="btn btn-primary" style="margin-top:10px;" href="${waLink}" target="_blank" rel="noopener">
-      💬 Confirm on WhatsApp
-    </a>`;
-  window.open(waLink, "_blank");
+  if (form) form.hidden = true;
+
+  wireSendAnotherLink(panel, form);
+}
+
+// Shared markup for the enquiry/booking confirmation panels — mirrors the
+// old site's confirmation card (icon, reference, message, a WhatsApp
+// button the customer taps themselves, and a link back to the form).
+function confirmationPanelHtml({ heading, reference, message, waLink, anotherText }) {
+  return `
+    <div style="text-align:center;">
+      <div style="font-size:40px;margin-bottom:10px;">✅</div>
+      <h3 style="margin:0 0 8px;">${heading}</h3>
+      <p class="muted" style="margin:0 0 6px;">Reference</p>
+      <p style="font-size:1.2rem;font-weight:700;margin:0 0 16px;">${reference}</p>
+      <p style="font-weight:700;margin:0 0 16px;">${message}</p>
+      <a class="btn btn-primary" href="${waLink}" target="_blank" rel="noopener">💬 Send WhatsApp Message</a>
+      <br><a href="#" data-send-another style="display:inline-block;margin-top:14px;font-weight:600;">${anotherText}</a>
+    </div>`;
+}
+
+// Swaps the confirmation panel back out for the form, so the customer can
+// submit a second enquiry/booking without reloading the page.
+function wireSendAnotherLink(panel, form) {
+  const link = panel.querySelector("[data-send-another]");
+  if (!link) return;
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    panel.hidden = true;
+    if (form) form.hidden = false;
+  });
 }

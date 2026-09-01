@@ -153,9 +153,10 @@
           <input type="text" name="customer_name" required minlength="2">
         </label>
         <label>Phone*
-          <input type="tel" name="phone" required pattern="[0-9]{10}" maxlength="10" placeholder="10-digit mobile number">
+          <input type="tel" name="phone" id="hallPhone" required inputmode="numeric" placeholder="10-digit mobile number">
         </label>
       </div>
+      <p class="form-note-error" id="hallPhoneNote" hidden></p>
       <div class="form-row">
         <label>Email
           <input type="email" name="email">
@@ -187,8 +188,9 @@
         <textarea name="notes" rows="2" placeholder="Birthday, wedding, corporate event..."></textarea>
       </label>
       <button type="submit" class="btn btn-primary btn-lg">Request Booking</button>
-      <div id="hallBookingConfirmation" class="confirmation-panel" hidden></div>
+      <p class="form-note">We'll save your request and show you a confirmation with a WhatsApp button.</p>
     </form>
+    <div id="hallBookingConfirmation" class="confirmation-panel" hidden></div>
   </div>
 </section>
 
@@ -205,9 +207,10 @@
           <input type="text" name="customer_name" required minlength="2">
         </label>
         <label>Phone*
-          <input type="tel" name="phone" required pattern="[0-9]{10}" maxlength="10" placeholder="10-digit mobile number">
+          <input type="tel" name="phone" id="hourlyPhone" required inputmode="numeric" placeholder="10-digit mobile number">
         </label>
       </div>
+      <p class="form-note-error" id="hourlyPhoneNote" hidden></p>
       <div class="form-row">
         <label>Facility*
           <select name="facility_id" id="hourlyFacility" required>
@@ -246,8 +249,9 @@
       </div>
       <p class="form-note" id="hourlyDurationNote" style="text-align:left;"></p>
       <button type="submit" class="btn btn-primary btn-lg">Request Booking</button>
-      <div id="hourlyBookingConfirmation" class="confirmation-panel" hidden></div>
+      <p class="form-note">We'll save your request and show you a confirmation with a WhatsApp button.</p>
     </form>
+    <div id="hourlyBookingConfirmation" class="confirmation-panel" hidden></div>
   </div>
 </section>
 
@@ -265,9 +269,10 @@
           <input type="text" name="customer_name" required minlength="2">
         </label>
         <label>Phone*
-          <input type="tel" name="phone" required pattern="[0-9]{10}" maxlength="10" placeholder="10-digit mobile number">
+          <input type="tel" name="phone" id="enquiryPhone" required inputmode="numeric" placeholder="10-digit mobile number">
         </label>
       </div>
+      <p class="form-note-error" id="enquiryPhoneNote" hidden></p>
       <div class="form-row">
         <label>Email
           <input type="email" name="email">
@@ -296,8 +301,9 @@
         <textarea name="message" rows="3" placeholder="Tell us about your event..."></textarea>
       </label>
       <button type="submit" class="btn btn-primary btn-lg">Send Enquiry</button>
-      <div id="enquiryConfirmation" class="confirmation-panel" hidden></div>
+      <p class="form-note">We'll save your enquiry and show you a confirmation with a WhatsApp button.</p>
     </form>
+    <div id="enquiryConfirmation" class="confirmation-panel" hidden></div>
   </div>
 </section>
 

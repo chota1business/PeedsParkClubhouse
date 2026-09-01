@@ -142,6 +142,12 @@ h2 { font-size: 1.8rem; }
 .availability-result.ok, .confirmation-panel { background: #E7F5EE; color: var(--teal-dark); }
 .availability-result.busy { background: #FDECEA; color: var(--coral-dark); }
 
+/* Phase 10: field-level messaging, ported from the old Apps Script site's
+   UX fix — an inline message under the field (red + bold for an error),
+   never a native browser popup. */
+.form-note { color: var(--muted); font-size: 0.85rem; margin: 6px 0 0; }
+.form-note-error { color: #c0392b; font-weight: 700; font-size: 0.9rem; margin: 6px 0 0; }
+
 /* Policies */
 .policies { padding: 40px 0 56px; }
 .policy-grid { display: grid; gap: 16px; grid-template-columns: 1fr; margin-top: 20px; }
