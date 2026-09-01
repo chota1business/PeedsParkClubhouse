@@ -1,0 +1,362 @@
+<title>PeedsPark QA Checklist</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root {
+    --coral: #FF6B35;
+    --coral-ink: #C44A1C;
+    --teal: #0E7C7B;
+    --navy: #1B2A4A;
+    --gold: #D9A441;
+    --cream: #FFF8EF;
+
+    --bg: var(--cream);
+    --surface: #FFFFFF;
+    --surface-2: #FBF3E7;
+    --border: #EBDCC7;
+    --text: var(--navy);
+    --text-muted: #6B6152;
+    --accent: var(--coral);
+    --accent-ink: var(--coral-ink);
+    --link: var(--teal);
+    --ok: #2E9E5B;
+    --warn: var(--gold);
+    --danger: #B33A3A;
+    --chip-bg: #F3E8D6;
+    --code-bg: #22314F;
+    --code-text: #E9E2D3;
+    --shadow: 0 1px 2px rgba(27,42,74,0.06), 0 8px 24px rgba(27,42,74,0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12192B;
+      --surface: #1A2540;
+      --surface-2: #202D4D;
+      --border: #33436B;
+      --text: #F1ECE0;
+      --text-muted: #A9AFC4;
+      --accent: #FF8656;
+      --accent-ink: #FFB08C;
+      --link: #4FC3C0;
+      --ok: #4CC787;
+      --warn: #E8BC66;
+      --danger: #E37070;
+      --chip-bg: #26325A;
+      --code-bg: #0E1626;
+      --code-text: #D9E2F5;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12192B;
+    --surface: #1A2540;
+    --surface-2: #202D4D;
+    --border: #33436B;
+    --text: #F1ECE0;
+    --text-muted: #A9AFC4;
+    --accent: #FF8656;
+    --accent-ink: #FFB08C;
+    --link: #4FC3C0;
+    --ok: #4CC787;
+    --warn: #E8BC66;
+    --danger: #E37070;
+    --chip-bg: #26325A;
+    --code-bg: #0E1626;
+    --code-text: #D9E2F5;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    margin: 0;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 20px 80px; }
+
+  header.top {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 20px 14px;
+  }
+  header.top .inner { max-width: 760px; margin: 0 auto; }
+  h1 {
+    font-family: "Sora", sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.5rem, 4vw, 1.9rem);
+    margin: 0 0 4px;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle { color: var(--text-muted); font-size: 0.92rem; margin: 0 0 14px; }
+
+  .progress-row { display: flex; align-items: center; gap: 12px; }
+  .progress-track {
+    flex: 1; height: 8px; border-radius: 999px;
+    background: var(--surface-2); overflow: hidden; border: 1px solid var(--border);
+  }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold)); width: 0%; transition: width 0.3s ease; }
+  .progress-label { font-family: "IBM Plex Mono", monospace; font-size: 0.82rem; color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .reset-btn {
+    font-family: "IBM Plex Sans", sans-serif; font-size: 0.78rem; font-weight: 600;
+    background: none; border: 1px solid var(--border); color: var(--text-muted);
+    padding: 4px 10px; border-radius: 999px; cursor: pointer; margin-top: 10px;
+  }
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent-ink); }
+  .reset-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  main { padding-top: 22px; }
+
+  .callout {
+    background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--teal);
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 26px; box-shadow: var(--shadow);
+    font-size: 0.92rem;
+  }
+  .callout code {
+    font-family: "IBM Plex Mono", monospace; background: var(--code-bg); color: var(--code-text);
+    padding: 1px 6px; border-radius: 4px; font-size: 0.85em;
+  }
+  .callout p { margin: 6px 0; }
+  .callout p:first-child { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  section.group { margin-bottom: 30px; }
+  .group-head {
+    display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px;
+    padding-bottom: 8px; border-bottom: 2px solid var(--border);
+  }
+  .group-head h2 {
+    font-family: "Sora", sans-serif; font-weight: 700; font-size: 1.15rem; margin: 0;
+    color: var(--text);
+  }
+  .group-count {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; color: var(--text-muted);
+    background: var(--chip-bg); padding: 2px 8px; border-radius: 999px; font-variant-numeric: tabular-nums;
+  }
+  .group-note { color: var(--text-muted); font-size: 0.85rem; margin: 6px 0 14px; }
+
+  .item {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 10px 12px; border-radius: 8px; margin-bottom: 2px;
+  }
+  .item:hover { background: var(--surface-2); }
+  .item input[type="checkbox"] {
+    margin-top: 3px; width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer;
+  }
+  .item label { cursor: pointer; flex: 1; }
+  .item.checked label { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--border); }
+  .item .id {
+    font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 0.78rem;
+    color: var(--teal); margin-right: 6px;
+  }
+  .item.checked .id { color: var(--text-muted); }
+  .item .tag {
+    display: inline-block; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.03em;
+    text-transform: uppercase; padding: 1px 6px; border-radius: 4px; margin-left: 8px;
+    background: var(--chip-bg); color: var(--text-muted); vertical-align: middle;
+  }
+  .tag.auto { background: rgba(46,158,91,0.15); color: var(--ok); }
+  .tag.manual { background: rgba(217,164,65,0.18); color: var(--accent-ink); }
+
+  footer.foot { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.82rem; }
+</style>
+
+<header class="top">
+  <div class="inner">
+    <h1>PeedsPark <span>QA Checklist</span></h1>
+    <p class="subtitle">chota1business/PeedsParkClubhouse — Supabase-backed site. Run the sanity check after every deploy.</p>
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <span class="progress-label" id="progressLabel">0 / 0</span>
+    </div>
+    <button class="reset-btn" id="resetBtn">Reset checklist</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <main>
+    <div class="callout">
+      <p><b>Before this list:</b> run <code>python tests/run_tests.py</code> from the repo root (see <code>tests/run_tests.py</code>) — it covers everything tagged <span class="tag auto">auto</span> below automatically, in under a minute, with no login needed.</p>
+      <p>Everything tagged <span class="tag manual">manual</span> needs a real staff login or touches the live database/WhatsApp/email — walk through those by hand, ideally against a test enquiry/booking you delete afterward.</p>
+    </div>
+
+    <section class="group" data-group="sanity">
+      <div class="group-head"><h2>Sanity check</h2><span class="group-count" data-count></span></div>
+      <p class="group-note">~5 minutes. Run this first, every time, before anything else.</p>
+      <div class="items"></div>
+    </section>
+
+    <section class="group" data-group="enquiry">
+      <div class="group-head"><h2>A · Enquiry form</h2><span class="group-count" data-count></span></div>
+      <div class="items"></div>
+    </section>
+
+    <section class="group" data-group="booking">
+      <div class="group-head"><h2>B · Booking forms</h2><span class="group-count" data-count></span></div>
+      <p class="group-note">Hall/Lawn and Pool/Badminton, on the homepage.</p>
+      <div class="items"></div>
+    </section>
+
+    <section class="group" data-group="admin">
+      <div class="group-head"><h2>C · Admin login &amp; dashboard</h2><span class="group-count" data-count></span></div>
+      <p class="group-note">Log in as a real staff account for this section.</p>
+      <div class="items"></div>
+    </section>
+
+    <section class="group" data-group="notify">
+      <div class="group-head"><h2>D · Notifications</h2><span class="group-count" data-count></span></div>
+      <p class="group-note">WhatsApp confirmation links + the owner alert email (Phase 5).</p>
+      <div class="items"></div>
+    </section>
+
+    <section class="group" data-group="security">
+      <div class="group-head"><h2>E · Security &amp; validation</h2><span class="group-count" data-count></span></div>
+      <div class="items"></div>
+    </section>
+
+    <section class="group" data-group="regression">
+      <div class="group-head"><h2>F · Cross-page regression</h2><span class="group-count" data-count></span></div>
+      <div class="items"></div>
+    </section>
+
+    <section class="group" data-group="phase9">
+      <div class="group-head"><h2>G · Phase 9 (partial payments, digests, slot picker)</h2><span class="group-count" data-count></span></div>
+      <p class="group-note">New in Phase 9 — the auto checks run offline (mocked), everything else needs the live site/database.</p>
+      <div class="items"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    Checkbox progress is stored per-browser only — it's your personal running checklist, not shared or synced. To update the test cases, edit and republish to this same artifact URL.
+  </footer>
+</div>
+
+<script>
+const DATA = {
+  sanity: [
+    ["S1", "auto", "Homepage, admin login, and all 4 admin-v2 pages load with zero unexpected JS console errors"],
+    ["S2", "auto", "No page has horizontal scroll/overflow at a 375px mobile width"],
+    ["S3", "manual", "Every facility image on the homepage actually loads (no broken image icons)"],
+    ["S4", "manual", "Check Availability renders results for at least one facility/date"],
+    ["S5", "manual", "Quick Enquiry form submits successfully end-to-end (creates a real row — delete it after)"],
+    ["S6", "manual", "Admin login works with the real Admin account (tincye29@gmail.com)"],
+  ],
+  enquiry: [
+    ["A1", "auto", "Honeypot field exists in the DOM (hidden from real users, present for bots)"],
+    ["A2", "auto", "Every date input enforces a 'min' attribute — no past dates selectable"],
+    ["A3", "manual", "Submitting with an invalid phone number is rejected with a clear message"],
+    ["A4", "manual", "Submitting instantly (under 3s) is rejected — the min-fill-time bot guard"],
+    ["A5", "manual", "4th enquiry within the rate-limit window is rejected with 'Too many submissions'"],
+  ],
+  booking: [
+    ["B1", "auto", "Selecting Badminton hides pool-only fields; selecting Pool shows them"],
+    ["B2", "manual", "Hall/Lawn booking submits successfully and shows the WhatsApp confirmation link"],
+    ["B3", "manual", "Pool booking at a date/time already near capacity is rejected client-side or server-side"],
+    ["B4", "manual", "Badminton Court 1 and Court 2 can be booked for the exact same time slot independently"],
+    ["B5", "manual", "A second exclusive-mode booking on the same court/time is rejected"],
+  ],
+  admin: [
+    ["C1", "auto", "Every admin-v2 page redirects to login (or shows 'Not authorised') when visited with no session"],
+    ["C2", "manual", "Dashboard tiles for Enquiries, Hall/Lawn, and Pool/Badminton all open live pages, none say 'Coming soon'"],
+    ["C3", "manual", "Enquiries: status filter chips work, updating status writes an audit_log entry"],
+    ["C4", "manual", "Bookings: approve/reject/cancel/mark-paid all work and write audit_log entries"],
+    ["C5", "manual", "Bookings: creating and removing a block works, and a Manager (not just Admin) can unblock"],
+    ["C6", "manual", "Hourly bookings: approve/reject/cancel work for both Pool and Badminton"],
+    ["C7", "manual", "Logging out actually ends the session (revisiting an admin page redirects to login again)"],
+  ],
+  notify: [
+    ["D1", "manual", "After any customer submission, the 'Confirm on WhatsApp' link opens with the right prefilled message and booking code"],
+    ["D2", "manual", "A new enquiry/booking triggers an owner alert email within a minute or two"],
+    ["D3", "manual", "The owner alert email's WhatsApp link opens the correct customer's chat"],
+  ],
+  security: [
+    ["E1", "manual", "A raw REST call to the Supabase API without going through the site cannot insert a booking with status already set to 'approved' (see PHASE_STATUS.md — this exact gap was found and fixed once already, worth re-checking after any future schema change)"],
+    ["E2", "manual", "An anonymous (not logged in) request cannot read any enquiry, booking, or hourly_booking row"],
+    ["E3", "manual", "A logged-in staff account that isn't in the staff table (or is inactive) cannot reach dashboard data"],
+    ["E4", "manual", "Supabase security advisor (Dashboard → Advisors) shows no new, unaccepted findings"],
+  ],
+  regression: [
+    ["F1", "auto", "No leftover git merge-conflict markers (<<<<<<< / >>>>>>>) in any shipped HTML file"],
+    ["F2", "auto", "Footer on every public page links to privacy-policy.html"],
+    ["F3", "manual", "Branding/logo is consistent across all pages, public and admin"],
+    ["F4", "manual", "Nothing on the live GitHub Pages URL 404s (recheck this — it was an open issue as of the last check)"],
+  ],
+  phase9: [
+    ["G1", "auto", "Check Availability renders a real slot list (not just a plain status message) for a fixed (Hall/Lawn) facility"],
+    ["G2", "auto", "Clicking an available fixed slot's 'Request to Book' prefills the Hall/Lawn form's facility/date/slot"],
+    ["G3", "auto", "Check Availability shows remaining-of-capacity for Pool hourly slots"],
+    ["G4", "auto", "Clicking an available hourly slot prefills the Pool/Badminton form's facility/date/start time"],
+    ["G5", "auto", "Picking a duration that runs into a Full/Booked hour shows a conflict message and disables submit"],
+    ["G6", "auto", "Picking a duration that fits shows the OK message and re-enables submit"],
+    ["G7", "manual", "A real booking submitted via the slot picker lands correctly in Supabase (facility/date/slot match what was clicked)"],
+    ["G8", "manual", "Admin → Bookings: '🌗 Mark Partial (50%)' appears only for approved, unpaid Hall/Lawn/Non-AC Hall bookings, never for Pool/Badminton"],
+    ["G9", "manual", "Marking a Hall/Lawn booking Partial, then Paid, both update payment_status correctly and write audit_log entries"],
+    ["G10", "manual", "An enquiry left open 12+ hours (status New/Contacted/Follow-up) appears in the next owner digest email"],
+    ["G11", "manual", "A booking request left pending 24+ hours, and an approved-but-unpaid upcoming booking, both appear in the next owner booking digest email"],
+    ["G12", "manual", "Digest emails never go to the customer — owner's inbox only (by design, see PHASE_STATUS.md Phase 9)"],
+  ],
+};
+
+const STORAGE_KEY = "peedspark-qa-checklist-v1";
+
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+  catch (e) { return {}; }
+}
+function saveState(state) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { /* private browsing etc. — progress just won't persist */ }
+}
+
+function render() {
+  const state = loadState();
+  let total = 0, done = 0;
+
+  Object.entries(DATA).forEach(([group, items]) => {
+    const section = document.querySelector(`[data-group="${group}"]`);
+    const container = section.querySelector(".items");
+    const countEl = section.querySelector("[data-count]");
+    container.innerHTML = "";
+
+    let groupDone = 0;
+    items.forEach(([id, kind, text]) => {
+      total++;
+      const checked = !!state[id];
+      if (checked) { done++; groupDone++; }
+
+      const row = document.createElement("div");
+      row.className = "item" + (checked ? " checked" : "");
+      row.innerHTML = `
+        <input type="checkbox" id="chk-${id}" ${checked ? "checked" : ""}>
+        <label for="chk-${id}"><span class="id">${id}</span>${text}<span class="tag ${kind}">${kind}</span></label>
+      `;
+      const box = row.querySelector("input");
+      box.addEventListener("change", () => {
+        const s = loadState();
+        s[id] = box.checked;
+        saveState(s);
+        render();
+      });
+      container.appendChild(row);
+    });
+
+    countEl.textContent = `${groupDone}/${items.length}`;
+  });
+
+  document.getElementById("progressFill").style.width = total ? `${(done / total) * 100}%` : "0%";
+  document.getElementById("progressLabel").textContent = `${done} / ${total}`;
+}
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (confirm("Clear all checked items?")) {
+    saveState({});
+    render();
+  }
+});
+
+render();
+</script>

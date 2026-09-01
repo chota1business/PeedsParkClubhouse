@@ -69,8 +69,30 @@ function bookingRowHtml(b) {
   }
   if (b.status === "approved") {
     actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="cancel">🚫 Cancel</button>`);
-    actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="paid">💰 Mark Paid</button>`);
+    // Partial (50% advance) only applies to Hall/Lawn bookings — DB-enforced
+    // too (booking_requests_partial_only_hall_lawn_check), this just keeps
+    // the button from appearing where it would be rejected anyway.
+    const partialEligible = ["ac_hall", "non_ac_hall", "lawn"].includes(b.facility_id);
+    if (partialEligible && b.payment_status === "unpaid") {
+      actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="partial">🌗 Mark Partial (50%)</button>`);
+    }
+    if (b.payment_status !== "received") {
+      actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="paid">💰 Mark Paid</button>`);
+    }
   }
+  // Refund only makes sense once cancelled, and only if money had actually
+  // changed hands (payment_status partial/received) — DB-enforced too
+  // (booking_requests_refund_requires_cancelled_check).
+  if (b.status === "cancelled" && b.payment_status !== "unpaid") {
+    actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="refund">💸 ${b.refund_status !== "none" ? "Update Refund" : "Refund"}</button>`);
+  }
+
+  const cancelInfo = b.status === "cancelled" && (b.cancellation_reason || b.refund_status !== "none")
+    ? `<div class="muted small">
+        ${b.cancellation_reason ? "🚫 " + escapeHtml(b.cancellation_reason) : ""}
+        ${b.refund_status !== "none" ? ` · refund: <strong>${b.refund_status}</strong>${b.refund_notes ? " — " + escapeHtml(b.refund_notes) : ""}` : ""}
+      </div>`
+    : "";
 
   return `
     <div class="enquiry-card" style="border-left-color:${color};">
@@ -85,6 +107,7 @@ function bookingRowHtml(b) {
           · payment: ${b.payment_status}
           · status: <strong>${b.status}</strong>
         </div>
+        ${cancelInfo}
         ${b.notes ? `<p class="enquiry-message">${escapeHtml(b.notes)}</p>` : ""}
       </div>
       <div class="enquiry-card-actions">
@@ -98,17 +121,21 @@ async function handleBookingAction(id, action) {
   const booking = allBookings.find(b => b.id === id);
   if (!booking) return;
 
+  if (action === "cancel") return cancelBooking(booking);
+  if (action === "refund") return recordRefund(booking);
+
   const confirmMsgs = {
     approve: `Approve booking ${booking.booking_code} for ${booking.customer_name}?`,
     reject: `Reject booking ${booking.booking_code}? This cannot be undone from here.`,
-    cancel: `Cancel the approved booking ${booking.booking_code}? This frees the slot back up.`,
-    paid: `Mark ${booking.booking_code} as payment received?`,
+    paid: `Mark ${booking.booking_code} as payment received (in full)?`,
+    partial: `Mark ${booking.booking_code} as partially paid (50% advance received)?`,
   };
   if (!confirm(confirmMsgs[action])) return;
 
-  const statusMap = { approve: "approved", reject: "rejected", cancel: "cancelled" };
-  const update = action === "paid"
-    ? { payment_status: "received", updated_at: new Date().toISOString() }
+  const statusMap = { approve: "approved", reject: "rejected" };
+  const paymentMap = { paid: "received", partial: "partial" };
+  const update = action in paymentMap
+    ? { payment_status: paymentMap[action], updated_at: new Date().toISOString() }
     : { status: statusMap[action], updated_at: new Date().toISOString() };
 
   const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", id);
@@ -116,7 +143,11 @@ async function handleBookingAction(id, action) {
   if (error) {
     // The approved-slot unique index (one facility/date/slot can only have one
     // approved booking) surfaces here as a constraint violation if two pending
-    // requests target the same slot and both get approved.
+    // requests target the same slot and both get approved. The
+    // booking_requests_partial_only_hall_lawn_check constraint would also
+    // surface here if "partial" is ever attempted on a non-Hall/Lawn facility
+    // (shouldn't happen — the button is hidden for those — but the DB is the
+    // real backstop).
     alert(
       error.message?.includes("duplicate key") || error.code === "23505"
         ? "That slot is already approved for another booking on this date."
@@ -125,7 +156,72 @@ async function handleBookingAction(id, action) {
     return;
   }
 
-  await writeAudit(action === "paid" ? "mark_payment_received" : `${action}_booking`, "booking_requests", id, { booking_code: booking.booking_code });
+  const auditActionMap = { paid: "mark_payment_received", partial: "mark_payment_partial" };
+  await writeAudit(auditActionMap[action] || `${action}_booking`, "booking_requests", id, { booking_code: booking.booking_code });
+  Object.assign(booking, update);
+  renderBookings();
+}
+
+async function cancelBooking(booking) {
+  const reason = prompt(
+    `Cancel the approved booking ${booking.booking_code} for ${booking.customer_name}? This frees the slot back up.\n\nReason for cancellation (shown to staff only, optional):`,
+    ""
+  );
+  if (reason === null) return; // staff backed out of the dialog entirely
+
+  const update = {
+    status: "cancelled",
+    cancellation_reason: reason.trim() || null,
+    cancelled_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", booking.id);
+  if (error) {
+    alert("Couldn't cancel this booking: " + error.message);
+    return;
+  }
+
+  await writeAudit("cancel_booking", "booking_requests", booking.id, { booking_code: booking.booking_code, reason: update.cancellation_reason });
+  Object.assign(booking, update);
+  renderBookings();
+}
+
+async function recordRefund(booking) {
+  const current = booking.refund_status !== "none" ? booking.refund_status : "";
+  let refundStatus = prompt(
+    `Refund status for ${booking.booking_code} (payment was: ${booking.payment_status}).\nType one of: none, partial, full`,
+    current
+  );
+  if (refundStatus === null) return;
+  refundStatus = refundStatus.trim().toLowerCase();
+  if (!["none", "partial", "full"].includes(refundStatus)) {
+    alert('Refund status must be exactly one of: none, partial, full.');
+    return;
+  }
+
+  let notes = "";
+  if (refundStatus !== "none") {
+    notes = prompt(`What happened? (e.g. "₹5000 refunded via UPI on 12 Sep")`, booking.refund_notes || "");
+    if (notes === null) return;
+  }
+
+  const update = {
+    refund_status: refundStatus,
+    refund_notes: refundStatus === "none" ? null : (notes.trim() || null),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", booking.id);
+  if (error) {
+    // booking_requests_refund_requires_cancelled_check is the real backstop —
+    // the Refund button only shows for already-cancelled bookings, so this
+    // shouldn't fire in practice, but the DB is what actually enforces it.
+    alert("Couldn't save refund status: " + error.message);
+    return;
+  }
+
+  await writeAudit("record_refund", "booking_requests", booking.id, { booking_code: booking.booking_code, refund_status: refundStatus });
   Object.assign(booking, update);
   renderBookings();
 }

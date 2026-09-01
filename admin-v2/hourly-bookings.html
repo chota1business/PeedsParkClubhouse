@@ -51,6 +51,46 @@
     <div id="bookingList" class="enquiry-list">
       <p class="muted center" style="padding:40px;">Loading bookings…</p>
     </div>
+
+    <div class="page-head" style="margin-top:44px;">
+      <h2>🏸 Members-Reserved Hours</h2>
+    </div>
+    <p class="muted" style="margin:-8px 0 20px;">Badminton courts reserve 05:00–08:00 and 17:00–23:00 for members by default. Open a specific date's window below to allow public booking for it.</p>
+    <form id="unblockForm" class="panel-form">
+      <div class="form-row">
+        <label>Court*
+          <select name="facility_id" required>
+            <option value="badminton_1">Badminton Court 1</option>
+            <option value="badminton_2">Badminton Court 2</option>
+          </select>
+        </label>
+        <label>Date*
+          <input type="date" name="booking_date" required>
+        </label>
+      </div>
+      <div class="form-row">
+        <label>From*
+          <select name="start_time" required>
+            <option value="05:00">05:00</option>
+            <option value="17:00">17:00</option>
+          </select>
+        </label>
+        <label>To*
+          <select name="end_time" required>
+            <option value="08:00">08:00</option>
+            <option value="23:00" selected>23:00</option>
+          </select>
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Reason
+          <input type="text" name="reason" placeholder="Tournament, open club day...">
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary">Open This Window</button>
+    </form>
+
+    <div id="unblockList" class="enquiry-list" style="margin-top:16px;"></div>
   </div>
 </main>
 

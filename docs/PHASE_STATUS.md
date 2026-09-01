@@ -50,7 +50,46 @@ Before telling the user this was ready to ship, I deliberately tried to write to
 
 **Lesson for every phase from here on**: whenever a table moves from "direct insert" to "insert via a `submit_*()` function," the old direct-insert policy and grant must be removed in the *same* migration — leaving both paths open is the actual vulnerability, not either one alone. Worth a specific check before Phase 5/6's final review too.
 
-## Phases 5–7: not started
+## Phase 5 — Notifications: 🔶 in progress
+
+Scope narrowed with the user: WhatsApp for customers (already working — every form's confirmation panel has a prefilled "Confirm on WhatsApp" link, built during Phases 2–4), plus a new **owner alert email** on every new enquiry/booking. No customer confirmation emails (avoids the domain-verification question entirely for now).
+
+- `supabase/migrations/011_notify_owner_setup.sql` — enables `pg_net`, generates a shared webhook secret into Supabase Vault, adds an `AFTER INSERT` trigger on `enquiries`/`booking_requests`/`hourly_bookings` that calls the Edge Function asynchronously (never blocks or fails a customer's submission).
+- `supabase/functions/notify-owner/index.ts` — deployed and live. Checks the shared secret (not a JWT — its only caller is the DB trigger), formats a plain-language alert email per submission type, sends via Resend.
+- **Blocked on the user**: needs a Resend API key (free tier) plus the `WEBHOOK_SECRET`/`OWNER_EMAIL`/`RESEND_API_KEY` set as Edge Function secrets in the Supabase dashboard — cannot be set via migration or MCP tools. Once set, this needs a real end-to-end test (a live submission → confirm the email actually lands) before marking Phase 5 done.
+
+## Phase 6 — Security hardening: 🔶 mostly done
+
+Rate limiting confirmed attached to all three public tables (`trg_rate_limit_enquiries`/`booking_requests`/`hourly_bookings`, all `BEFORE INSERT`), plus the capacity trigger on `hourly_bookings` (`BEFORE INSERT OR UPDATE`) and the critical direct-write lockdown (see above) — all reverified in one pass. Full RLS policy inventory reviewed across every table (`staff`, `facilities`, `blocks`, `audit_log`, plus the three booking tables) — consistent, no other gaps found. Security advisor clean.
+
+**Still open**: "leaked password protection" toggle in Supabase Auth settings — a one-click dashboard action only the user can do. Final sign-off review once Phase 5 is fully wired and tested end-to-end.
+
+## Phase 7 — Parallel testing: 🔶 in progress
+
+Mirrors the pattern already used for the old site (`docs/automated-test-script.md`/`docs/test-plan-link.md` describe that one — this is the equivalent for the new Supabase-backed site):
+
+- `tests/run_tests.py` — Playwright script, 25 automated checks: every page loads clean, no mobile overflow, honeypot/date-guard/phone-field presence, pool/badminton field toggle, every admin-v2 page correctly refuses to show staff content without a session (accepts either valid fail-safe path — redirect-to-login when Supabase loads but there's no session, or the "Not authorised" panel when Supabase itself fails to load — both are intentional, not a bug in either direction). Ran clean (25/25), then verified it actually catches a real regression by deliberately breaking the footer's privacy-policy link and confirming the script caught it, then restored the file and confirmed byte-identical to the original.
+- QA checklist artifact (Sanity/A–F sections, same structure as the old test-plan artifact) — published at https://claude.ai/code/artifact/0e23bad0-e031-49a2-8991-36b3fd69a5c7, tags every item auto vs manual, includes the specific "re-check the direct-write lockdown" item from the critical fix above so that particular class of bug gets checked again after any future schema change.
+
+**Not yet done**: an actual full manual run-through of the checklist against the live site with a real staff login (I've been verifying the backend directly against the live database throughout, which is a different and more thorough check than clicking through the UI end-to-end as a human would) — worth doing once Phase 5's email is confirmed working, so one pass covers everything.
+
+## Phase 9 — Old-site catch-up (partial payments, follow-up digests, slot picker): ✅ Done
+
+Built after comparing the old `ls-park-clubhouse` site's Aug 2026 changes (Google Sheets/Apps Script + HTML, both committed and uncommitted) against this site. Three gaps identified and closed; a fourth item (the old site's "Payment gate" feature) turned out to already be covered by the existing "Mark Paid" admin action, so nothing further was needed there.
+
+**1. Partial-payment tracking** (`012_phase9_partial_payment.sql`) — `booking_requests.payment_status` now allows `unpaid` / `partial` / `received`, matching the old site's 50%-advance tracking for Hall+Lawn. A second CHECK constraint (`booking_requests_partial_only_hall_lawn_check`) enforces `partial` can only be set for `ac_hall`/`non_ac_hall`/`lawn` — Pool/Badminton bookings don't track payment at all, same as before. Verified: both Hall and Lawn accept `partial`, Pool is rejected, a bogus payment_status value is rejected. Admin UI (`admin-v2/js/bookings.js`) got a new "🌗 Mark Partial (50%)" action next to "💰 Mark Paid", shown only where the DB would actually accept it.
+
+**2. `get_facility_slots()` RPC** (`013_phase9_get_facility_slots.sql`) — a SECURITY DEFINER function (same trust model as `public_availability`, read-only, no rate-limited action) that returns real per-slot availability computed from the same tables `check_hourly_capacity()` uses: Morning/Evening/Full Day status for Hall/Lawn (with the correct full-day-conflicts-with-both logic), and hourly Available/Full/Booked/Blocked status — with remaining capacity — for Pool/Badminton, using each facility's actual `open_time`/`close_time` from the `facilities` table. Verified against seeded test bookings (shared capacity math, exclusive-mode conflicts, pending-vs-approved status, blocks) and confirmed callable by the `anon` role.
+
+**3. Homepage slot-picker UX** (`index.html` + `js/app.js`) — the "Check Availability" section now renders the real slot list from `get_facility_slots()` with a "Request to Book" button per open slot, which prefills the matching booking form (facility/date/slot, or facility/date/start-time) and scrolls to it — closing the old site's "check then re-type everything" gap. Added a client-side duration/mode re-check for Pool/Badminton bookings (using the already-fetched slot data) that flags an obvious conflict — e.g. picking 3 hours starting from a slot that's only free for 1 more — before submit, same idea as the old site's `validateConsecutiveHours_`. This is a courtesy check only; the DB's `check_hourly_capacity` trigger remains the actual enforcement either way, so a stale or skipped client check can never let a real conflict through.
+
+**4. Follow-up digests** (`014_phase9_followup_digest.sql` + `notify-owner` Edge Function v2) — ported the old site's 12-hour reminder trigger, but as an **owner-only digest**, not the old site's direct customer emails. Two reasons, both already true of this project: the Phase 5 decision (WhatsApp for customers, email only to the owner), and a real technical constraint — Resend's free-tier `onboarding@resend.dev` sender can only deliver to the account's own verified address, so customer-facing reminder emails would silently fail today. `pg_cron` now runs `private.send_enquiry_digest()` twice daily (enquiries open 12h+, not yet Converted/Lost) and `private.send_booking_digest()` once daily (booking requests pending 24h+, plus approved-but-unpaid bookings for upcoming dates) — both call the existing `notify_owner()` → Edge Function path, extended with two new digest email formats. Verified against seeded stale/pending/unpaid test rows before rollback.
+
+**Not ported, deliberately**: the old site's actual "Payment gate" feature and its direct customer-facing reminder emails — see above for why each was skipped rather than silently built.
+
+**Verification**: `tests/run_tests.py` extended with a 7-check Section G (slot-picker render, prefill for both fixed and hourly facilities, remaining-capacity display, the client-side duration conflict check and its recovery, no stray JS errors) — mocks the RPC response so it runs offline like the rest of the suite. Full suite: 32/32 passing. Security advisor re-run — no new findings beyond the two pre-existing, already-documented ones (leaked-password toggle pending user action; the `get_facility_slots`/`submit_*` SECURITY DEFINER warnings are expected, same pattern as every public-facing RPC in this project).
+
+## Status table
 
 | Phase | Status |
 |---|---|
@@ -59,7 +98,8 @@ Before telling the user this was ready to ship, I deliberately tried to write to
 | 2 — Enquiries | ✅ Done |
 | 3 — Hall/Lawn bookings | ✅ Done |
 | 4 — Pool & Badminton | ✅ Done |
-| 5 — Notifications | Not started |
-| 6 — Security hardening | Rate limiting + honeypot + validation + RLS advisor pass done; leaked-password-protection toggle pending (user action); final review still pending — do it once Phase 5 exists |
-| 7 — Parallel testing | Not started |
+| 5 — Notifications | 🔶 Built, blocked on user's Resend API key + Edge Function secrets |
+| 6 — Security hardening | 🔶 Mostly done — leaked-password toggle + final sign-off pending |
+| 7 — Parallel testing | 🔶 Automated script + checklist artifact done — full manual run-through pending |
 | 8 — Privacy policy | ✅ Done |
+| 9 — Old-site catch-up (partial payments, digests, slot picker) | ✅ Done |

@@ -140,6 +140,117 @@
   </div>
 </section>
 
+<section class="booking" id="book-hall-lawn">
+  <div class="container">
+    <h2 class="center">Book AC Hall, Non-AC Hall or Lawn</h2>
+    <p class="center muted">Submit a request — we'll confirm by WhatsApp or phone.</p>
+    <form id="hallBookingForm" class="panel-form">
+      <div class="hp-field" aria-hidden="true">
+        <label>Leave blank<input type="text" name="website" id="hpFieldHall" tabindex="-1" autocomplete="off"></label>
+      </div>
+      <div class="form-row">
+        <label>Name*
+          <input type="text" name="customer_name" required minlength="2">
+        </label>
+        <label>Phone*
+          <input type="tel" name="phone" required pattern="[0-9]{10}" maxlength="10" placeholder="10-digit mobile number">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Email
+          <input type="email" name="email">
+        </label>
+        <label>Facility*
+          <select name="facility_id" required>
+            <option value="ac_hall">AC Hall</option>
+            <option value="non_ac_hall">Non-AC Hall</option>
+            <option value="lawn">Lawn</option>
+          </select>
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Date*
+          <input type="date" name="booking_date" id="hallBookingDate" required>
+        </label>
+        <label>Slot*
+          <select name="slot" required>
+            <option value="morning">Morning</option>
+            <option value="evening">Evening</option>
+            <option value="full_day">Full Day</option>
+          </select>
+        </label>
+      </div>
+      <label>Expected guests
+        <input type="number" name="guests" min="1">
+      </label>
+      <label>Notes / event type
+        <textarea name="notes" rows="2" placeholder="Birthday, wedding, corporate event..."></textarea>
+      </label>
+      <button type="submit" class="btn btn-primary btn-lg">Request Booking</button>
+      <div id="hallBookingConfirmation" class="confirmation-panel" hidden></div>
+    </form>
+  </div>
+</section>
+
+<section class="booking" id="book-hourly">
+  <div class="container">
+    <h2 class="center">Book Pool or Badminton (Hourly)</h2>
+    <p class="center muted">Pick your hours — we'll confirm by WhatsApp or phone.</p>
+    <form id="hourlyBookingForm" class="panel-form">
+      <div class="hp-field" aria-hidden="true">
+        <label>Leave blank<input type="text" name="website" id="hpFieldHourly" tabindex="-1" autocomplete="off"></label>
+      </div>
+      <div class="form-row">
+        <label>Name*
+          <input type="text" name="customer_name" required minlength="2">
+        </label>
+        <label>Phone*
+          <input type="tel" name="phone" required pattern="[0-9]{10}" maxlength="10" placeholder="10-digit mobile number">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Facility*
+          <select name="facility_id" id="hourlyFacility" required>
+            <option value="pool">Swimming Pool</option>
+            <option value="badminton_1">Badminton Court 1</option>
+            <option value="badminton_2">Badminton Court 2</option>
+          </select>
+        </label>
+        <label>Date*
+          <input type="date" name="booking_date" id="hourlyBookingDate" required>
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Start time*
+          <input type="time" name="start_time" id="hourlyStartTime" required>
+        </label>
+        <label>Duration (hours)*
+          <select name="duration" id="hourlyDuration" required>
+            <option value="1">1 hour</option>
+            <option value="2">2 hours</option>
+            <option value="3">3 hours</option>
+            <option value="4">4 hours</option>
+          </select>
+        </label>
+      </div>
+      <div class="form-row" id="poolOnlyFields">
+        <label>Guests
+          <input type="number" name="guests" id="hourlyGuests" min="1" value="1">
+        </label>
+        <label>Booking mode
+          <select name="mode" id="hourlyMode">
+            <option value="shared">Shared</option>
+            <option value="exclusive">Exclusive</option>
+          </select>
+        </label>
+      </div>
+      <p class="form-note" id="hourlyDurationNote" style="text-align:left;"></p>
+      <button type="submit" class="btn btn-primary btn-lg">Request Booking</button>
+      <div id="hourlyBookingConfirmation" class="confirmation-panel" hidden></div>
+    </form>
+  </div>
+</section>
+
 <section class="enquire" id="enquire">
   <div class="container">
     <h2 class="center">Quick Enquiry</h2>
