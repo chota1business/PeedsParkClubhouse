@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manager Feed — PeedsPark Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/manager-feed.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="container admin-header-inner">
+    <a href="dashboard.html" class="logo">Peeds<span>Park</span> <span class="admin-tag">Admin</span></a>
+    <div class="admin-user">
+      <span id="staffName">Loading…</span>
+      <span id="staffRole" class="role-badge"></span>
+      <button id="logoutBtn" class="btn btn-outline-dark">Log Out</button>
+    </div>
+  </div>
+</header>
+
+<main class="container admin-main">
+  <div id="notAuthorised" hidden class="policy-card" style="border-left:6px solid var(--coral); max-width:520px; margin:60px auto;">
+    <h3>Not authorised</h3>
+    <p>This account isn't set up as PeedsPark staff.</p>
+    <a class="btn btn-primary" href="index.html">Back to login</a>
+  </div>
+
+  <div id="pageContent" hidden>
+    <div class="page-head">
+      <a href="dashboard.html" class="back-link">&larr; Dashboard</a>
+      <h2>📞 Manager Feed</h2>
+    </div>
+    <p class="muted" style="margin:-8px 0 20px;">Every enquiry and booking in one list, so you can call and act without hopping between pages. Log a phoned-in booking or a running cost from here too.</p>
+
+    <div class="tab-row">
+      <button class="tab-btn active" data-tab="activity">Activity Feed</button>
+      <button class="tab-btn" data-tab="expenses">Expenses</button>
+    </div>
+
+    <!-- ACTIVITY TAB -->
+    <div id="tab-activity" class="tab-panel">
+      <div class="filter-row" style="align-items:center;">
+        <input type="search" id="feedSearch" placeholder="Search name or phone…" style="flex:1;min-width:200px;padding:10px 14px;border-radius:999px;border:2px solid #E4E0D8;font-size:0.95rem;">
+        <button class="filter-chip active" data-type="all">All</button>
+        <button class="filter-chip" data-type="enquiry">Enquiries</button>
+        <button class="filter-chip" data-type="hall_lawn_booking">Hall &amp; Lawn</button>
+        <button class="filter-chip" data-type="hourly_booking">Pool &amp; Badminton</button>
+        <button class="btn btn-primary btn-sm" id="openAddBookingBtn" style="margin-left:auto;">+ Add Booking</button>
+      </div>
+
+      <div id="feedList" class="enquiry-list">
+        <p class="muted center" style="padding:40px;">Loading…</p>
+      </div>
+    </div>
+
+    <!-- EXPENSES TAB -->
+    <div id="tab-expenses" class="tab-panel" hidden>
+      <div id="expenseSummary" class="expense-summary"></div>
+
+      <div class="filter-row" style="align-items:center;">
+        <button class="filter-chip active" data-month="current">This month</button>
+        <button class="filter-chip" data-month="all">All time</button>
+        <button class="btn btn-primary btn-sm" id="openAddExpenseBtn" style="margin-left:auto;">+ Add Expense</button>
+      </div>
+
+      <div id="expenseList" class="enquiry-list">
+        <p class="muted center" style="padding:40px;">Loading…</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Add Booking modal -->
+<div id="addBookingModal" class="modal-backdrop" hidden>
+  <div class="modal-card">
+    <button class="modal-close" id="closeAddBookingBtn" aria-label="Close">&times;</button>
+    <h3>Add a phoned-in booking</h3>
+    <p class="muted small">Goes through the exact same availability/capacity checks as the website's own booking forms.</p>
+    <form id="addBookingForm">
+      <label>Facility
+        <select name="facility_id" id="bookingFacilitySelect" required>
+          <option value="ac_hall">AC Hall</option>
+          <option value="non_ac_hall">Non-AC Hall</option>
+          <option value="lawn">Lawn</option>
+          <option value="pool">Swimming Pool</option>
+          <option value="badminton_1">Badminton Court 1</option>
+          <option value="badminton_2">Badminton Court 2</option>
+        </select>
+      </label>
+      <div class="modal-row">
+        <label>Customer name
+          <input type="text" name="customer_name" required minlength="2">
+        </label>
+        <label>Phone
+          <input type="tel" name="phone" id="bookingPhoneInput" required inputmode="numeric" placeholder="10-digit mobile number">
+        </label>
+      </div>
+      <div class="modal-row">
+        <label>Email (optional)
+          <input type="email" name="email">
+        </label>
+        <label>Guests (optional)
+          <input type="number" name="guests" min="1">
+        </label>
+      </div>
+      <label>Date
+        <input type="date" name="booking_date" id="bookingDateInput" required>
+      </label>
+
+      <!-- Fixed-slot fields (Hall/Lawn) -->
+      <div id="fixedSlotFields">
+        <label>Slot
+          <select name="slot">
+            <option value="morning">Morning</option>
+            <option value="evening">Evening</option>
+            <option value="full_day">Full Day</option>
+          </select>
+        </label>
+        <label>Notes (optional)
+          <textarea name="notes" rows="2"></textarea>
+        </label>
+      </div>
+
+      <!-- Hourly fields (Pool/Badminton) -->
+      <div id="hourlyFields" hidden>
+        <div class="modal-row">
+          <label>Start time
+            <input type="time" name="start_time">
+          </label>
+          <label>Duration
+            <select name="duration">
+              <option value="1">1 hour</option>
+              <option value="2">2 hours</option>
+              <option value="3">3 hours</option>
+              <option value="4">4 hours</option>
+            </select>
+          </label>
+        </div>
+        <label id="modeFieldWrap">Booking mode (Pool only)
+          <select name="mode">
+            <option value="shared">Shared</option>
+            <option value="exclusive">Exclusive</option>
+          </select>
+        </label>
+      </div>
+
+      <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-top:16px;">
+        <input type="checkbox" name="mark_approved" style="width:auto;">
+        Mark as already confirmed (skip pending review — use only if you've already confirmed this with the customer)
+      </label>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline-dark" id="cancelAddBookingBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Booking</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add Expense modal -->
+<div id="addExpenseModal" class="modal-backdrop" hidden>
+  <div class="modal-card">
+    <button class="modal-close" id="closeAddExpenseBtn" aria-label="Close">&times;</button>
+    <h3>Log an expense</h3>
+    <form id="addExpenseForm">
+      <div class="modal-row">
+        <label>Date
+          <input type="date" name="expense_date" id="expenseDateInput" required>
+        </label>
+        <label>Amount (₹)
+          <input type="number" name="amount" min="0" step="0.01" required>
+        </label>
+      </div>
+      <div class="modal-row">
+        <label>Category
+          <select name="category" required>
+            <option value="maintenance">Maintenance</option>
+            <option value="wages">Wages</option>
+            <option value="supplies">Supplies</option>
+            <option value="utilities">Utilities</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label>Facility (optional)
+          <select name="facility_id">
+            <option value="">General / whole site</option>
+            <option value="ac_hall">AC Hall</option>
+            <option value="non_ac_hall">Non-AC Hall</option>
+            <option value="lawn">Lawn</option>
+            <option value="pool">Swimming Pool</option>
+            <option value="badminton_1">Badminton Court 1</option>
+            <option value="badminton_2">Badminton Court 2</option>
+          </select>
+        </label>
+      </div>
+      <label>Description
+        <input type="text" name="description" required placeholder="e.g. Pool chemical top-up">
+      </label>
+      <label>Paid by (optional)
+        <input type="text" name="paid_by" placeholder="e.g. Tincy, cash">
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline-dark" id="cancelAddExpenseBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Expense</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../js/supabase-client.js"></script>
+<script src="js/admin-auth.js"></script>
+<script src="js/manager-feed.js"></script>
+</body>
+</html>
