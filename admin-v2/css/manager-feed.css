@@ -28,6 +28,11 @@
   position: fixed; inset: 0; background: rgba(27,42,74,0.55); z-index: 100;
   display: flex; align-items: flex-start; justify-content: center; padding: 30px 16px; overflow-y: auto;
 }
+/* Without this, the [hidden] attribute alone doesn't win against the
+   display:flex above (author styles beat the browser's default [hidden]
+   rule) — both modals were rendering open on page load, on top of the
+   Activity Feed list. This is the actual fix for that. */
+.modal-backdrop[hidden] { display: none !important; }
 .modal-card {
   background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow);
   padding: 28px; max-width: 520px; width: 100%; margin: auto;
