@@ -22,6 +22,15 @@
 }
 
 * { box-sizing: border-box; }
+
+/* Guard: some component rules below set display explicitly on elements
+   (e.g. .panel-form label { display:flex }), which otherwise silently
+   overrides the native [hidden] behaviour and makes a hidden field show up
+   anyway (this hid the single-facility Check Availability dropdown but kept
+   it visible on pool/ac-hall/non-ac-hall/lawn/badminton's Guests field). This
+   rule makes [hidden] always win, sitewide, regardless of what else targets
+   the element. */
+[hidden] { display: none !important; }
 body {
   margin: 0;
   font-family: var(--font-body);
@@ -128,6 +137,35 @@ h3 { font-size: 1.25rem; }
 }
 .hero.hero-photo .container { position: relative; z-index: 1; }
 .hero.hero-photo h1 { font-size: clamp(1.875rem, 5vw, 3.25rem); max-width: 800px; }
+
+/* Homepage hero: text on the left, quick-jump buttons to the 3 facility
+   pages on the right — replaces the separate Facilities section below. */
+.hero-home .hero-split {
+  display: grid; grid-template-columns: 1fr; gap: 36px; align-items: center;
+  text-align: left;
+}
+.hero-home .hero-text h1,
+.hero-home .hero-text .hero-sub { margin-left: 0; margin-right: 0; }
+.hero-home .hero-actions { justify-content: flex-start; }
+.hero-links { display: flex; flex-direction: column; gap: 14px; }
+.hero-link-btn {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--white); color: var(--navy);
+  padding: 18px 22px; border-radius: var(--radius);
+  font-weight: 700; font-size: 1.05rem;
+  box-shadow: var(--shadow);
+  border-left: 6px solid var(--coral);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.hero-link-btn .facility-icon { font-size: 1.6rem; }
+.hero-link-btn:hover { transform: translateY(-3px) translateX(2px); box-shadow: 0 14px 30px rgba(23,32,42,0.3); }
+.hero-link-teal { border-left-color: var(--teal); }
+.hero-link-coral { border-left-color: var(--coral); }
+.hero-link-gold { border-left-color: var(--coral-dark); }
+
+@media (min-width: 760px) {
+  .hero-home .hero-split { grid-template-columns: 1.15fr 0.85fr; }
+}
 
 /* About */
 .about { padding: 70px 0; background: var(--white); }
@@ -246,3 +284,13 @@ a.facility-card { display: block; transition: transform 0.15s ease, box-shadow 0
   background: #25D366; color: var(--white); display: flex; align-items: center; justify-content: center;
   font-size: 1.6rem; box-shadow: 0 6px 18px rgba(0,0,0,0.25); z-index: 60;
 }
+
+/* Homepage hero: "open in Google Maps" link under the CTA buttons */
+.hero .location { display: inline-block; margin-top: 20px; color: var(--white); font-weight: 600; font-size: 0.9rem; opacity: 0.9; }
+.hero .location:hover { text-decoration: underline; opacity: 1; }
+
+/* Homepage Quick Enquiry: two-column layout (intro text + form) */
+.enquiry-grid { display: grid; gap: 32px; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 860px) { .enquiry-grid { grid-template-columns: 0.9fr 1.1fr; } }
+.contact-mini { display: flex; flex-direction: column; gap: 6px; margin-top: 20px; font-weight: 700; }
+.contact-mini a { color: var(--navy); }

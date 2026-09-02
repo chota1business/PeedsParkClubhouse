@@ -39,7 +39,11 @@ document.addEventListener("DOMContentLoaded", () => {
       .join("");
     facilitySelect.closest(".form-row, label")?.removeAttribute("hidden");
   } else if (facilitySelect) {
-    // Single-facility page: no need to show a selector at all.
+    // Single-facility page: no need to show a selector at all, but the
+    // <select> still needs a real <option> so .value actually sticks —
+    // setting .value on an empty <select> silently no-ops and leaves the
+    // facility_id sent to the server blank.
+    facilitySelect.innerHTML = `<option value="${config.facilities[0].id}">${config.facilities[0].label}</option>`;
     facilitySelect.value = config.facilities[0].id;
     facilitySelect.closest("label")?.setAttribute("hidden", "");
   }
