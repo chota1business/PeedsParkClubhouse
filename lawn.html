@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Party Lawn — PeedsPark Club House</title>
+<meta name="description" content="PeedsPark Party Lawn, Ammancherry, Kerala — open-air lawn for outdoor parties and functions. Check availability and request a booking online.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌳</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="index.html" class="logo">Peeds<span>Park</span></a>
+    <nav class="main-nav" id="mainNav">
+      <a href="index.html">Home</a>
+      <a href="club-house.html" class="active">Club House</a>
+      <a href="pool.html">Pool</a>
+      <a href="badminton.html">Badminton</a>
+      <a href="index.html#gallery">Gallery</a>
+      <a href="index.html#contact">Contact</a>
+    </nav>
+    <a href="#availability" class="btn btn-primary btn-nav">Check Availability</a>
+    <button class="nav-toggle" id="navToggle" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<section class="hero hero-photo" style="background-image:url('images/lawn1.jpeg');">
+  <div class="container hero-inner">
+    <p class="eyebrow"><a href="club-house.html" style="color:inherit;">Club House</a> / Party Lawn</p>
+    <h1>Party Lawn</h1>
+    <p class="hero-sub">An open-air lawn for outdoor parties, functions and gatherings. Morning, evening or full-day slots.</p>
+    <div class="hero-actions">
+      <a href="#availability" class="btn btn-primary btn-lg">Check Availability &amp; Book</a>
+      <a href="tel:+919846718106" class="btn btn-outline btn-lg">📞 Call Us</a>
+    </div>
+  </div>
+</section>
+
+<section class="enquire" id="availability">
+  <div class="container">
+    <h2 class="center">Check Availability &amp; Book</h2>
+    <p class="center muted">Pick a date to see open slots, then request to book directly — no separate enquiry needed.</p>
+
+    <form id="pageAvailabilityForm" class="panel-form">
+      <label hidden>Facility
+        <select id="pageFacility"></select>
+      </label>
+      <div class="form-row">
+        <label>Date
+          <input type="date" id="pageDate" required>
+        </label>
+        <label style="justify-content:flex-end;">
+          <span>&nbsp;</span>
+          <button type="submit" class="btn btn-primary">Check Availability</button>
+        </label>
+      </div>
+    </form>
+
+    <div id="pageSlotResult" class="availability-result" hidden></div>
+
+    <div id="bookingDetailsWrap" class="booking-details-wrap" hidden>
+      <p class="slot-label">Request to Book — <span id="slotLabelText"></span></p>
+      <form id="pageBookingForm">
+        <div class="hp-field" aria-hidden="true">
+          <label>Leave blank<input type="text" name="website" id="bookHp" tabindex="-1" autocomplete="off"></label>
+        </div>
+        <div class="form-row">
+          <label>Name*
+            <input type="text" name="customer_name" required minlength="2">
+          </label>
+          <label>Phone*
+            <input type="tel" name="phone" id="bookPhone" required inputmode="numeric" placeholder="10-digit mobile number">
+          </label>
+        </div>
+        <p class="form-note-error" id="bookPhoneNote" hidden></p>
+        <div class="form-row">
+          <label>Email
+            <input type="email" name="email">
+          </label>
+          <label>Number of guests
+            <input type="number" name="guests" min="1" placeholder="Approx. guests">
+          </label>
+        </div>
+        <label>Notes
+          <textarea name="notes" rows="2" placeholder="Event type, special requests..."></textarea>
+        </label>
+        <details style="margin:10px 0 16px;font-size:0.82rem;color:var(--muted);">
+          <summary style="cursor:pointer;font-weight:700;color:var(--coral-dark);">Advance payment &amp; cancellation policy</summary>
+          <div style="margin-top:8px;line-height:1.6;">
+            50% advance required, payable on booking confirmation. Full refund if cancelled 30+ days before the event, 50% refund if cancelled 15–29 days before, no refund within 15 days.
+          </div>
+        </details>
+        <button type="submit" class="btn btn-primary btn-lg">Send Booking Request</button>
+        <p class="form-note">We'll save your request and show you a confirmation with a WhatsApp button.</p>
+        <a href="#" id="changeSlotLink" class="change-slot-link">← Choose a different date/slot</a>
+      </form>
+    </div>
+
+    <div id="bookingConfirmation" class="confirmation-panel" hidden></div>
+  </div>
+</section>
+
+<footer class="site-footer" id="contact">
+  <div class="container footer-inner">
+    <div>
+      <p class="logo footer-logo">Peeds<span>Park</span></p>
+      <p>Ammancherry, Kerala 686561</p>
+      <p>📞 <a href="tel:+919846718106">98467 18106</a> · <a href="tel:+919946440088">99464 40088</a></p>
+      <p><a href="https://wa.me/919846718106" target="_blank" rel="noopener">💬 WhatsApp Us</a> · <a href="https://maps.google.com" target="_blank" rel="noopener">📍 Google Maps</a></p>
+    </div>
+    <div>
+      <p><a href="privacy-policy.html">Privacy Policy</a></p>
+    </div>
+  </div>
+  <p class="footer-tagline">Sports · Celebrations · Memories</p>
+</footer>
+
+<a href="https://wa.me/919846718106" class="whatsapp-float" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">💬</a>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/nav.js"></script>
+<script>
+  window.FACILITY_PAGE_CONFIG = {
+    type: "fixed",
+    facilities: [{ id: "lawn", label: "Party Lawn" }],
+    showModeAndGuests: false,
+  };
+</script>
+<script src="js/facility-page.js"></script>
+</body>
+</html>

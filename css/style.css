@@ -65,8 +65,9 @@ h2 { font-size: 1.8rem; }
 .logo { font-size: 1.4rem; font-weight: 900; color: var(--navy); }
 .logo span { color: var(--coral); }
 .main-nav { display: none; gap: 24px; }
-.main-nav a { color: var(--navy); font-weight: 600; }
+.main-nav a { color: var(--navy); font-weight: 600; padding: 6px 0; border-bottom: 3px solid transparent; }
 .main-nav a:hover { color: var(--coral); }
+.main-nav a.active { color: var(--coral); border-bottom-color: var(--coral); }
 .nav-toggle { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
 
 @media (min-width: 860px) {
@@ -74,6 +75,16 @@ h2 { font-size: 1.8rem; }
   .btn-nav { display: inline-block; }
   .nav-toggle { display: none; }
 }
+
+/* Multi-page nav: mobile hamburger dropdown (Phase 10 site-structure rebuild) */
+.main-nav.open {
+  display: flex; flex-direction: column; gap: 0;
+  position: absolute; top: 100%; left: 0; right: 0;
+  background: var(--white); box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+  padding: 8px 20px 14px;
+}
+.main-nav.open a { padding: 12px 4px; border-bottom: 1px solid #F0EBE0; }
+.header-inner { position: relative; }
 
 /* Hero */
 .hero {
@@ -90,6 +101,20 @@ h2 { font-size: 1.8rem; }
 @media (min-width: 700px) {
   .hero h1 { font-size: 2.8rem; }
 }
+
+/* Facility-page hero: a real photo banner instead of the homepage's plain
+   gradient — mirrors the old site's per-page banner. */
+.hero.hero-photo {
+  background-size: cover; background-position: center;
+  position: relative; padding: 90px 0 70px;
+}
+.hero.hero-photo::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(27,42,74,0.55), rgba(27,42,74,0.75));
+}
+.hero.hero-photo .container { position: relative; z-index: 1; }
+.hero.hero-photo h1 { font-size: 2.2rem; }
+@media (min-width: 700px) { .hero.hero-photo h1 { font-size: 2.6rem; } }
 
 /* About */
 .about { padding: 56px 0; }
@@ -109,21 +134,58 @@ h2 { font-size: 1.8rem; }
 .facility-card.card-plum { border-top-color: var(--plum); }
 .facility-icon { font-size: 2.2rem; }
 .facility-card h3 { margin-top: 12px; }
+.facility-card .card-cta {
+  display: inline-flex; align-items: center; margin-top: 14px; font-size: 0.85rem; font-weight: 700;
+  color: var(--white); background: var(--teal); padding: 8px 14px; border-radius: 999px;
+}
+.facility-card:hover .card-cta { background: var(--teal-dark); }
+.facility-card:hover { box-shadow: 0 12px 30px rgba(27,42,74,0.18); transform: translateY(-3px); }
+a.facility-card { display: block; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+
+/* Amenities — separate, smaller-emphasis row below the 3 main facility
+   cards (ported from the old site's "More at PeedsPark" section, which
+   deliberately keeps parking/coaching out of the main Facilities cards). */
+.amenities { padding: 8px 0 56px; background: var(--white); }
+.amenities-grid { display: grid; gap: 18px; grid-template-columns: 1fr; max-width: 760px; margin: 24px auto 0; }
+@media (min-width: 640px) { .amenities-grid { grid-template-columns: 1fr 1fr; } }
+.amenity-card { background: var(--cream); border: 2px solid #EFE6D6; border-radius: var(--radius); padding: 22px; text-align: center; }
+.amenity-card .facility-icon { display: block; margin-bottom: 10px; }
+.amenity-card h3 { margin: 0 0 6px; font-size: 1.1rem; }
+.amenity-card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
 
 /* Events chips */
 .events { padding: 20px 0 56px; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 20px; }
 .chip { background: var(--white); border: 2px solid var(--teal); color: var(--teal-dark); padding: 10px 18px; border-radius: 999px; font-weight: 600; }
 
-/* Gallery */
+/* Gallery — real photos (ported from the old site's images/ folder) in a
+   figure/figcaption grid, replacing the earlier coloured placeholder tiles. */
 .gallery { padding: 20px 0 56px; }
 .gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 20px; }
 @media (min-width: 700px) { .gallery-grid { grid-template-columns: repeat(3, 1fr); } }
-.gallery-item { border-radius: var(--radius); aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; color: var(--white); font-weight: 700; text-align: center; padding: 10px; }
-.ph-coral { background: linear-gradient(135deg, var(--coral), var(--gold)); }
-.ph-teal { background: linear-gradient(135deg, var(--teal), var(--navy)); }
-.ph-gold { background: linear-gradient(135deg, var(--gold), var(--coral)); }
-.ph-navy { background: linear-gradient(135deg, var(--navy), var(--teal-dark)); }
+.gallery-grid figure {
+  position: relative; margin: 0; border-radius: var(--radius); overflow: hidden;
+  aspect-ratio: 4/3; background: #EFE6D6; box-shadow: var(--shadow);
+}
+.gallery-grid img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.35s ease; }
+.gallery-grid figure:hover img { transform: scale(1.06); }
+.gallery-grid figcaption {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px;
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em; color: var(--white);
+  background: linear-gradient(to top, rgba(27,42,74,0.85), rgba(27,42,74,0));
+}
+
+/* Merged Check Availability + Book flow (facility pages) — one section
+   holding the date/duration inputs, the live slot list, and (revealed
+   after a slot is picked) an inline mini booking form, ported from the
+   old site's single-page-per-facility structure. */
+.slot-picker-form { max-width: 640px; margin: 24px auto 0; background: var(--white); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+.booking-details-wrap {
+  max-width: 640px; margin: 18px auto 0; background: var(--cream); border: 2px solid #EFE6D6;
+  border-radius: var(--radius); padding: 20px;
+}
+.booking-details-wrap .slot-label { font-weight: 700; color: var(--navy); margin: 0 0 14px; }
+.booking-details-wrap .change-slot-link { display: inline-block; margin-top: 4px; font-size: 0.85rem; font-weight: 600; color: var(--coral-dark); }
 
 /* Booking / Enquiry forms */
 .booking, .enquire { padding: 40px 0 56px; }

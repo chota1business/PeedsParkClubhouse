@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Badminton Court — PeedsPark Club House</title>
+<meta name="description" content="PeedsPark Badminton Court, Ammancherry, Kerala — two courts, hourly slots. Check availability and request a booking online.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏸</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="index.html" class="logo">Peeds<span>Park</span></a>
+    <nav class="main-nav" id="mainNav">
+      <a href="index.html">Home</a>
+      <a href="club-house.html">Club House</a>
+      <a href="pool.html">Pool</a>
+      <a href="badminton.html" class="active">Badminton</a>
+      <a href="index.html#gallery">Gallery</a>
+      <a href="index.html#contact">Contact</a>
+    </nav>
+    <a href="#availability" class="btn btn-primary btn-nav">Check Availability</a>
+    <button class="nav-toggle" id="navToggle" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<section class="hero hero-photo" style="background-image:url('images/Badmintoncourtoutside.jpeg');">
+  <div class="container hero-inner">
+    <p class="eyebrow">Facilities</p>
+    <h1>Badminton Court</h1>
+    <p class="hero-sub">Two courts for badminton and sports activities, 5 AM – 11 PM. Some hours are reserved for members — the picker below shows exactly what's open.</p>
+    <div class="hero-actions">
+      <a href="#availability" class="btn btn-primary btn-lg">Check Availability &amp; Book</a>
+      <a href="tel:+919846718106" class="btn btn-outline btn-lg">📞 Call Us</a>
+    </div>
+  </div>
+</section>
+
+<section class="about" id="about">
+  <div class="container">
+    <p class="lead center">Two badminton courts, open for casual play, sports activities and coaching. Pick a court and date below to see open hours and request a booking.</p>
+  </div>
+</section>
+
+<section class="enquire" id="availability">
+  <div class="container">
+    <h2 class="center">Check Availability &amp; Book</h2>
+    <p class="center muted">Choose a court and date to see open hours, then request to book directly — no separate enquiry needed.</p>
+
+    <form id="pageAvailabilityForm" class="panel-form">
+      <div class="form-row">
+        <label>Court
+          <select id="pageFacility"></select>
+        </label>
+        <label>Date
+          <input type="date" id="pageDate" required>
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary">Check Availability</button>
+    </form>
+
+    <div id="pageSlotResult" class="availability-result" hidden></div>
+
+    <div id="bookingDetailsWrap" class="booking-details-wrap" hidden>
+      <p class="slot-label">Request to Book — <span id="slotLabelText"></span></p>
+      <form id="pageBookingForm">
+        <div class="hp-field" aria-hidden="true">
+          <label>Leave blank<input type="text" name="website" id="bookHp" tabindex="-1" autocomplete="off"></label>
+        </div>
+        <div class="form-row">
+          <label>Name*
+            <input type="text" name="customer_name" required minlength="2">
+          </label>
+          <label>Phone*
+            <input type="tel" name="phone" id="bookPhone" required inputmode="numeric" placeholder="10-digit mobile number">
+          </label>
+        </div>
+        <p class="form-note-error" id="bookPhoneNote" hidden></p>
+        <div class="form-row">
+          <label>Email
+            <input type="email" name="email">
+          </label>
+          <label id="durationFieldWrap">Duration
+            <select name="duration" id="bookDuration">
+              <option value="1">1 hour</option>
+              <option value="2">2 hours</option>
+              <option value="3">3 hours</option>
+            </select>
+          </label>
+        </div>
+        <label id="modeGuestsWrap" hidden>Guests
+          <input type="number" name="guests" min="1">
+        </label>
+        <label>Notes
+          <textarea name="notes" rows="2" placeholder="Anything else we should know..."></textarea>
+        </label>
+        <button type="submit" class="btn btn-primary btn-lg">Send Booking Request</button>
+        <p class="form-note">We'll save your request and show you a confirmation with a WhatsApp button.</p>
+        <a href="#" id="changeSlotLink" class="change-slot-link">← Choose a different court/date/slot</a>
+      </form>
+    </div>
+
+    <div id="bookingConfirmation" class="confirmation-panel" hidden></div>
+  </div>
+</section>
+
+<section class="policies">
+  <div class="container">
+    <h2 class="center">Booking Policies</h2>
+    <div class="policy-grid">
+      <div class="policy-card">
+        <h3>Advance Payment</h3>
+        <p>100% advance for Badminton bookings, payable on confirmation.</p>
+      </div>
+      <div class="policy-card">
+        <h3>Coaching</h3>
+        <p>Professional badminton coaching available — ask when you request to book.</p>
+      </div>
+    </div>
+    <p class="center muted small">Full privacy details: <a href="privacy-policy.html">Privacy Policy</a></p>
+  </div>
+</section>
+
+<footer class="site-footer" id="contact">
+  <div class="container footer-inner">
+    <div>
+      <p class="logo footer-logo">Peeds<span>Park</span></p>
+      <p>Ammancherry, Kerala 686561</p>
+      <p>📞 <a href="tel:+919846718106">98467 18106</a> · <a href="tel:+919946440088">99464 40088</a></p>
+      <p><a href="https://wa.me/919846718106" target="_blank" rel="noopener">💬 WhatsApp Us</a> · <a href="https://maps.google.com" target="_blank" rel="noopener">📍 Google Maps</a></p>
+    </div>
+    <div>
+      <p><a href="privacy-policy.html">Privacy Policy</a></p>
+    </div>
+  </div>
+  <p class="footer-tagline">Sports · Celebrations · Memories</p>
+</footer>
+
+<a href="https://wa.me/919846718106" class="whatsapp-float" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">💬</a>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/nav.js"></script>
+<script>
+  window.FACILITY_PAGE_CONFIG = {
+    type: "hourly",
+    bookingModel: "resource",
+    facilities: [
+      { id: "badminton_1", label: "Court 1" },
+      { id: "badminton_2", label: "Court 2" },
+    ],
+    showModeAndGuests: false,
+  };
+</script>
+<script src="js/facility-page.js"></script>
+</body>
+</html>
