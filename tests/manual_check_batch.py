@@ -19,6 +19,11 @@ window.supabase = {
           return { data: { user: { id: 'u1' } } };
         },
         signOut: async function() { return {}; },
+        resetPasswordForEmail: async function(email, opts) {
+          window.__resetPasswordCalls = window.__resetPasswordCalls || [];
+          window.__resetPasswordCalls.push({ email: email, redirectTo: opts && opts.redirectTo });
+          return { data: {}, error: null };
+        },
       },
       from: function(table) {
         var obj = {
@@ -237,6 +242,205 @@ def run():
         result = page.evaluate("() => window.__paymentPromise2")
         check("Pool/Badminton: entering a partial amount (400 of 1000) resolves with payment_status 'partial', no error",
               result and result.get("payment_status") == "partial")
+        page.close()
+
+        # --- Check 9 (this batch): Pool over-capacity guest count shows the right message ---
+        page = browser.new_page()
+        pool_stub = SUPABASE_STUB.replace(
+            "if (name === 'get_facility_slots') {",
+            """if (name === 'get_facility_slots') {
+          if (params.p_facility_id === 'pool') {
+            return { data: { type: 'hourly', bookingModel: 'capacity', slots: [
+              { start: '06:00', end: '07:00', status: 'Available', remaining: 25, capacity: 25 }
+            ] }, error: null };
+          }"""
+        )
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=pool_stub))
+        dialogs9 = []
+        page.on("dialog", lambda d: (dialogs9.append(d.message), d.dismiss()))
+        page.goto(f"file://{ROOT}/pool.html")
+        page.wait_for_timeout(300)
+        page.fill("#pageDate", "2099-01-01")
+        page.click("#pageAvailabilityForm button[type=submit]")
+        page.wait_for_timeout(300)
+        page.click("#pageSlotResult [data-slot-index='0']")
+        page.wait_for_timeout(200)
+        page.fill("#pageBookingForm [name=customer_name]", "Test User")
+        page.fill("#bookPhone", "9846718106")
+        page.fill("#pageBookingForm [name=guests]", "26")
+        page.wait_for_timeout(3100)
+        page.click("#pageBookingForm button[type=submit]")
+        page.wait_for_timeout(200)
+        err_text = page.locator("#bookFormError").inner_text() if page.locator("#bookFormError").is_visible() else ""
+        check("Pool: requesting 26 guests on a 25-capacity slot shows a guest-count message, not a 'slot is booked' message",
+              "guest" in err_text.lower() and "booked" not in err_text.lower() and len(dialogs9) == 0)
+        page.close()
+
+        # --- Check 10 (this batch): Forgot password link opens the form and calls resetPasswordForEmail ---
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.goto(f"file://{ROOT}/admin-v2/index.html")
+        page.wait_for_timeout(300)
+        page.click("#forgotPasswordLink")
+        page.wait_for_timeout(150)
+        form_visible = page.locator("#forgotForm").is_visible()
+        check("Forgot-password link reveals the reset-request form", form_visible)
+        page.fill("#forgotEmail", "manager@example.com")
+        page.click("#forgotForm button[type=submit]")
+        page.wait_for_timeout(200)
+        calls = page.evaluate("() => window.__resetPasswordCalls || []")
+        check("Submitting the forgot-password form calls resetPasswordForEmail with the entered address and a reset-password.html redirect",
+              len(calls) == 1 and calls[0]["email"] == "manager@example.com" and "reset-password.html" in (calls[0]["redirectTo"] or ""))
+        msg_visible = page.locator("#forgotMessage").is_visible()
+        check("A confirmation message shows after submitting the forgot-password form", msg_visible)
+        page.close()
+
+        # --- Check 11 (updated for the two-row dashboard): row 1 is always
+        # Club House/Pool/Badminton; Manager Feed is pulled to the front of
+        # row 2 for Managers only, row 2 stays Enquiries-first for Admins ---
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.add_init_script("window.__STAFF_ROLE__ = 'manager';")
+        page.goto(f"file://{ROOT}/admin-v2/dashboard.html")
+        page.wait_for_timeout(400)
+        row1_hrefs = page.eval_on_selector_all("#row1Tiles .admin-tile", "els => els.map(e => e.getAttribute('href'))")
+        check("Dashboard row 1 is Club House, Pool, Badminton (Manager)",
+              row1_hrefs == ["bookings.html", "hourly-bookings.html?facility=pool", "hourly-bookings.html?facility=badminton"])
+        first_row2_href = page.eval_on_selector("#row2Tiles .admin-tile", "el => el.getAttribute('href')")
+        check("Manager dashboard: Manager Feed is the first tile in row 2", first_row2_href == "manager-feed.html")
+        club_house_label = page.eval_on_selector("#row1Tiles .admin-tile h3", "el => el.textContent")
+        check("Hall & Lawn tile renamed to Club House", "Club House" in club_house_label)
+        page.close()
+
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.add_init_script("window.__STAFF_ROLE__ = 'admin';")
+        page.goto(f"file://{ROOT}/admin-v2/dashboard.html")
+        page.wait_for_timeout(400)
+        first_row2_href_admin = page.eval_on_selector("#row2Tiles .admin-tile", "el => el.getAttribute('href')")
+        check("Admin dashboard: row 2 tile order is unchanged (Enquiries still first)", first_row2_href_admin == "enquiries.html")
+        page.close()
+
+        # --- Check: hourly-bookings.html?facility= deep-link pre-selects the chip ---
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.add_init_script("window.__STAFF_ROLE__ = 'manager';")
+        page.goto(f"file://{ROOT}/admin-v2/hourly-bookings.html?facility=pool")
+        page.wait_for_timeout(400)
+        active_facility = page.eval_on_selector('[data-facility].active', "el => el.dataset.facility")
+        check("hourly-bookings.html?facility=pool pre-selects the Pool chip", active_facility == "pool")
+        page.close()
+
+        # --- Check 12 (this batch): Add Enquiry from Manager Feed sends a source value the DB now accepts ---
+        page = browser.new_page()
+        mgr_stub = SUPABASE_STUB.replace(
+            "return { data: null, error: null };\n      },",
+            """if (name === 'submit_enquiry') {
+            window.__submitEnquiryCalls = window.__submitEnquiryCalls || [];
+            window.__submitEnquiryCalls.push(params);
+            return { data: [{ enquiry_code: 'ENQ-TEST01' }], error: null };
+          }
+          return { data: null, error: null };
+        },"""
+        )
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=mgr_stub))
+        page.add_init_script("window.__STAFF_ROLE__ = 'manager';")
+        page.goto(f"file://{ROOT}/admin-v2/manager-feed.html")
+        page.wait_for_timeout(400)
+        page.click("#openAddEnquiryBtn")
+        page.wait_for_timeout(150)
+        page.fill("#enquiryForm2 [name=customer_name]", "Phoned Customer")
+        page.fill("#enquiryPhoneInput2", "9846718106")
+        page.click("#enquiryForm2 button[type=submit]")
+        page.wait_for_timeout(300)
+        submitted = page.evaluate("() => (window.__submitEnquiryCalls || [])[0]")
+        check("Add Enquiry from Manager Feed sends p_source='phone' — the value the DB constraint was fixed to accept",
+              submitted is not None and submitted.get("p_source") == "phone")
+        page.close()
+
+        # --- Checks (this batch): Reject folded into Cancel, block-toggle panel, list-controls search/date/pagination ---
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.add_init_script("window.__STAFF_ROLE__ = 'admin';")
+        page.goto(f"file://{ROOT}/admin-v2/bookings.html")
+        page.wait_for_timeout(300)
+        pending_html = page.evaluate("""() => bookingRowHtml({ id: 'p1', status: 'pending', payment_status: 'unpaid',
+            customer_name: 'P', phone: '9846718106', booking_code: 'BK-2', facility_id: 'lawn', booking_date: '2026-09-05', slot: 'evening' })""")
+        approved_html2 = page.evaluate("""() => bookingRowHtml({ id: 'a1', status: 'approved', payment_status: 'partial',
+            customer_name: 'A', phone: '9846718106', booking_code: 'BK-3', facility_id: 'lawn', booking_date: '2026-09-05', slot: 'evening' })""")
+        check("Bookings: no separate Reject button — pending row's stop-action is the single Cancel button",
+              'data-action="reject"' not in pending_html and 'data-action="cancel"' in pending_html)
+        check("Bookings: approved row also uses the single Cancel button (no separate Reject)",
+              'data-action="reject"' not in approved_html2 and 'data-action="cancel"' in approved_html2)
+
+        panel_hidden_initially = page.eval_on_selector("#blocksPanel", "el => el.hidden")
+        page.click("#toggleBlocksBtn")
+        panel_shown_after_click = page.eval_on_selector("#blocksPanel", "el => !el.hidden")
+        page.click("#toggleBlocksBtn")
+        panel_hidden_after_second_click = page.eval_on_selector("#blocksPanel", "el => el.hidden")
+        check("Bookings: Block/Unblock panel starts collapsed behind the Manage Blocks toggle",
+              panel_hidden_initially and panel_shown_after_click and panel_hidden_after_second_click)
+        page.close()
+
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.add_init_script("window.__STAFF_ROLE__ = 'admin';")
+        page.goto(f"file://{ROOT}/admin-v2/hourly-bookings.html")
+        page.wait_for_timeout(300)
+        hourly_panel_hidden = page.eval_on_selector("#blocksPanel", "el => el.hidden")
+        page.click("#toggleBlocksBtn")
+        hourly_panel_shown = page.eval_on_selector("#blocksPanel", "el => !el.hidden")
+        check("Pool & Badminton: maintenance-block + reserved-hours tools collapsed behind one Manage Blocks toggle",
+              hourly_panel_hidden and hourly_panel_shown)
+        page.close()
+
+        # list-controls.js: search + date range + pagination behave correctly in isolation
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.add_init_script("window.__STAFF_ROLE__ = 'admin';")
+        page.goto(f"file://{ROOT}/admin-v2/bookings.html")
+        page.wait_for_timeout(300)
+        lc_result = page.evaluate("""() => {
+            const rows = [];
+            for (let i = 1; i <= 22; i++) {
+                rows.push({ customer_name: 'Cust' + i, phone: '900000000' + (i % 10), booking_date: '2026-09-' + String((i % 28) + 1).padStart(2, '0') });
+            }
+            const lc = createListControls({ pageSize: 5, searchText: r => r.customer_name + ' ' + r.phone, dateField: r => r.booking_date });
+            const page1 = lc.paginate(lc.apply(rows));
+            return { totalItems: page1.totalItems, totalPages: page1.totalPages, pageRowCount: page1.rows.length };
+        }""")
+        check("list-controls.js: paginates 22 rows into 5 pages of 5 (last page smaller)",
+              lc_result["totalItems"] == 22 and lc_result["totalPages"] == 5 and lc_result["pageRowCount"] == 5)
+        lc_search_direct = page.evaluate("""() => {
+            const rows = [{ customer_name: 'Alice', phone: '9000000001', booking_date: '2026-09-10' },
+                          { customer_name: 'Bob', phone: '9000000002', booking_date: '2026-09-11' }];
+            const lc = createListControls({
+                searchInputId: 'bookingSearch', dateFromId: 'bookingDateFrom', dateToId: 'bookingDateTo',
+                searchText: r => r.customer_name + ' ' + r.phone, dateField: r => r.booking_date,
+            });
+            document.getElementById('bookingSearch').value = 'alice';
+            document.getElementById('bookingSearch').dispatchEvent(new Event('input'));
+            const bySearch = lc.apply(rows).map(r => r.customer_name);
+            document.getElementById('bookingSearch').value = '';
+            document.getElementById('bookingSearch').dispatchEvent(new Event('input'));
+            document.getElementById('bookingDateFrom').value = '2026-09-11';
+            document.getElementById('bookingDateFrom').dispatchEvent(new Event('change'));
+            const byDate = lc.apply(rows).map(r => r.customer_name);
+            return { bySearch, byDate };
+        }""")
+        check("list-controls.js: search narrows to the matching name/phone",
+              lc_search_direct["bySearch"] == ["Alice"])
+        check("list-controls.js: date-from filters out rows earlier than the chosen date",
+              lc_search_direct["byDate"] == ["Bob"])
         page.close()
 
         browser.close()

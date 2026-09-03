@@ -55,10 +55,19 @@
         <button class="btn btn-outline-dark btn-sm" id="openAddEnquiryBtn" style="margin-left:auto;">+ Add Enquiry</button>
         <button class="btn btn-primary btn-sm" id="openAddBookingBtn">+ Add Booking</button>
       </div>
+      <div class="form-row" style="margin:8px 0 12px;">
+        <label>From
+          <input type="date" id="feedDateFrom">
+        </label>
+        <label>To
+          <input type="date" id="feedDateTo">
+        </label>
+      </div>
 
       <div id="feedList" class="enquiry-list">
         <p class="muted center" style="padding:40px;">Loading…</p>
       </div>
+      <div id="feedPager" class="pager-row" style="margin-top:12px; text-align:center;"></div>
     </div>
 
     <!-- EXPENSES TAB -->
@@ -339,6 +348,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../js/supabase-client.js"></script>
 <script src="js/admin-auth.js"></script>
+<script src="js/list-controls.js"></script>
 <script src="js/manager-feed.js"></script>
 </body>
 </html>

@@ -23,6 +23,7 @@ const FACILITY_LABELS = {
 let currentStaff = null;
 let allEnquiries = [];
 let activeFilter = "all";
+let listControls = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   const session = await requireStaffSession();
@@ -38,8 +39,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
       activeFilter = chip.dataset.status;
+      listControls?.resetPage();
       renderList();
     });
+  });
+
+  listControls = createListControls({
+    searchInputId: "enquirySearch",
+    dateFromId: "enquiryDateFrom",
+    dateToId: "enquiryDateTo",
+    pagerContainerId: "enquiryPager",
+    searchText: (e) => `${e.customer_name} ${e.phone}`,
+    dateField: (e) => e.preferred_date,
+    onChange: renderList,
   });
 
   wireEnquiryModal();
@@ -61,19 +73,23 @@ async function loadEnquiries() {
   }
 
   allEnquiries = data || [];
+  listControls?.resetPage();
   renderList();
 }
 
 function renderList() {
   const container = document.getElementById("enquiryList");
-  const rows = activeFilter === "all" ? allEnquiries : allEnquiries.filter(e => e.status === activeFilter);
+  let rows = activeFilter === "all" ? allEnquiries : allEnquiries.filter(e => e.status === activeFilter);
+  rows = listControls ? listControls.apply(rows) : rows;
 
   if (rows.length === 0) {
     container.innerHTML = `<p class="muted center" style="padding:40px;">No enquiries here.</p>`;
+    listControls?.renderPager(0);
     return;
   }
 
-  container.innerHTML = rows.map(rowHtml).join("");
+  const page = listControls ? listControls.paginate(rows) : { rows };
+  container.innerHTML = page.rows.map(rowHtml).join("");
 
   container.querySelectorAll("select.status-select").forEach(sel => {
     sel.addEventListener("change", (e) => updateStatus(e.target.dataset.id, e.target.value));
@@ -84,6 +100,7 @@ function renderList() {
   container.querySelectorAll("[data-convert]").forEach(btn => {
     btn.addEventListener("click", () => openConvertModal(allEnquiries.find(e => e.id === btn.dataset.convert)));
   });
+  listControls?.renderPager(rows.length);
 }
 
 function rowHtml(e) {

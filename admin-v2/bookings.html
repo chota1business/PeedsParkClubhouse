@@ -35,6 +35,43 @@
     <div class="page-head">
       <a href="dashboard.html" class="back-link">&larr; Dashboard</a>
       <h2>🏛️ Hall &amp; Lawn Bookings</h2>
+      <button type="button" id="toggleBlocksBtn" class="btn btn-outline-dark btn-sm" style="margin-left:auto;">🚫 Manage Blocks</button>
+    </div>
+
+    <!-- Block/unblock tool, collapsed by default behind the "Manage Blocks"
+         toggle above so this stays reachable without scrolling as the
+         booking list grows. -->
+    <div id="blocksPanel" hidden>
+      <div class="page-head" style="margin-top:8px;">
+        <h2>🚫 Block / Unblock Slots</h2>
+      </div>
+      <form id="blockForm" class="panel-form">
+        <div class="form-row">
+          <label>Facility*
+            <select name="facility_id" required>
+              <option value="ac_hall">AC Hall</option>
+              <option value="non_ac_hall">Non-AC Hall</option>
+              <option value="lawn">Lawn</option>
+            </select>
+          </label>
+          <label>Reason
+            <input type="text" name="reason" placeholder="Maintenance, private event...">
+          </label>
+        </div>
+        <div class="form-row">
+          <label>From*
+            <input type="datetime-local" name="start_at" required>
+          </label>
+          <label>To*
+            <input type="datetime-local" name="end_at" required>
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Block</button>
+      </form>
+      <p id="blockAdminNote" class="muted small" hidden>Blocking a facility for maintenance is an Admin-only action — ask an Admin to add or remove one.</p>
+
+      <div id="blockList" class="enquiry-list" style="margin-top:16px;"></div>
+      <hr style="margin:32px 0;">
     </div>
 
     <div class="filter-row">
@@ -45,39 +82,22 @@
       <button class="filter-chip" data-status="cancelled">Cancelled</button>
     </div>
 
+    <div class="form-row" style="margin:12px 0;">
+      <label>Search
+        <input type="search" id="bookingSearch" placeholder="Name or phone…">
+      </label>
+      <label>From
+        <input type="date" id="bookingDateFrom">
+      </label>
+      <label>To
+        <input type="date" id="bookingDateTo">
+      </label>
+    </div>
+
     <div id="bookingList" class="enquiry-list">
       <p class="muted center" style="padding:40px;">Loading bookings…</p>
     </div>
-
-    <div class="page-head" style="margin-top:44px;">
-      <h2>🚫 Block / Unblock Slots</h2>
-    </div>
-    <form id="blockForm" class="panel-form">
-      <div class="form-row">
-        <label>Facility*
-          <select name="facility_id" required>
-            <option value="ac_hall">AC Hall</option>
-            <option value="non_ac_hall">Non-AC Hall</option>
-            <option value="lawn">Lawn</option>
-          </select>
-        </label>
-        <label>Reason
-          <input type="text" name="reason" placeholder="Maintenance, private event...">
-        </label>
-      </div>
-      <div class="form-row">
-        <label>From*
-          <input type="datetime-local" name="start_at" required>
-        </label>
-        <label>To*
-          <input type="datetime-local" name="end_at" required>
-        </label>
-      </div>
-      <button type="submit" class="btn btn-primary">Add Block</button>
-    </form>
-    <p id="blockAdminNote" class="muted small" hidden>Blocking a facility for maintenance is an Admin-only action — ask an Admin to add or remove one.</p>
-
-    <div id="blockList" class="enquiry-list" style="margin-top:16px;"></div>
+    <div id="bookingPager" class="pager-row" style="margin-top:12px; text-align:center;"></div>
   </div>
 
   <!-- Edit Booking modal (date/slot/guests/notes — not payment or status) -->
@@ -132,6 +152,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../js/supabase-client.js"></script>
 <script src="js/admin-auth.js"></script>
+<script src="js/list-controls.js"></script>
 <script src="js/bookings.js"></script>
 </body>
 </html>

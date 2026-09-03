@@ -35,6 +35,83 @@
     <div class="page-head">
       <a href="dashboard.html" class="back-link">&larr; Dashboard</a>
       <h2>🏊 Pool &amp; Badminton Bookings</h2>
+      <button type="button" id="toggleBlocksBtn" class="btn btn-outline-dark btn-sm" style="margin-left:auto;">🚫 Manage Blocks</button>
+    </div>
+
+    <!-- Maintenance blocks + members-reserved-hours tools, collapsed by
+         default behind the "Manage Blocks" toggle above so this stays
+         reachable without scrolling as the booking list grows. -->
+    <div id="blocksPanel" hidden>
+      <div class="page-head" style="margin-top:8px;">
+        <h2>🚫 Block for Maintenance</h2>
+      </div>
+      <form id="blockForm" class="panel-form">
+        <div class="form-row">
+          <label>Facility*
+            <select name="facility_id" required>
+              <option value="pool">Swimming Pool</option>
+              <option value="badminton_1">Badminton Court 1</option>
+              <option value="badminton_2">Badminton Court 2</option>
+            </select>
+          </label>
+          <label>Reason
+            <input type="text" name="reason" placeholder="Maintenance, cleaning...">
+          </label>
+        </div>
+        <div class="form-row">
+          <label>From*
+            <input type="datetime-local" name="start_at" required>
+          </label>
+          <label>To*
+            <input type="datetime-local" name="end_at" required>
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Block</button>
+      </form>
+      <p id="blockAdminNote" class="muted small" hidden>Blocking a facility for maintenance is an Admin-only action — ask an Admin to add or remove one.</p>
+
+      <div id="blockList" class="enquiry-list" style="margin-top:16px;"></div>
+
+      <div class="page-head" style="margin-top:32px;">
+        <h2>🏸 Members-Reserved Hours</h2>
+      </div>
+      <p class="muted" style="margin:-8px 0 20px;">Badminton courts reserve 05:00–08:00 and 17:00–23:00 for members by default. Open a specific date's window below to allow public booking for it.</p>
+      <form id="unblockForm" class="panel-form">
+        <div class="form-row">
+          <label>Court*
+            <select name="facility_id" required>
+              <option value="badminton_1">Badminton Court 1</option>
+              <option value="badminton_2">Badminton Court 2</option>
+            </select>
+          </label>
+          <label>Date*
+            <input type="date" name="booking_date" required>
+          </label>
+        </div>
+        <div class="form-row">
+          <label>From*
+            <select name="start_time" required>
+              <option value="05:00">05:00</option>
+              <option value="17:00">17:00</option>
+            </select>
+          </label>
+          <label>To*
+            <select name="end_time" required>
+              <option value="08:00">08:00</option>
+              <option value="23:00" selected>23:00</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-row">
+          <label>Reason
+            <input type="text" name="reason" placeholder="Tournament, open club day...">
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary">Open This Window</button>
+      </form>
+
+      <div id="unblockList" class="enquiry-list" style="margin-top:16px;"></div>
+      <hr style="margin:32px 0;">
     </div>
 
     <div class="filter-row">
@@ -52,79 +129,22 @@
 
     <p class="muted small" style="margin-top:-4px;">Pool bookings share capacity by guest count; badminton and exclusive-mode pool slots block the whole time window — the system already prevents double-booking, so approving here just confirms it.</p>
 
+    <div class="form-row" style="margin:12px 0;">
+      <label>Search
+        <input type="search" id="hourlySearch" placeholder="Name or phone…">
+      </label>
+      <label>From
+        <input type="date" id="hourlyDateFrom">
+      </label>
+      <label>To
+        <input type="date" id="hourlyDateTo">
+      </label>
+    </div>
+
     <div id="bookingList" class="enquiry-list">
       <p class="muted center" style="padding:40px;">Loading bookings…</p>
     </div>
-
-    <div class="page-head" style="margin-top:44px;">
-      <h2>🚫 Block for Maintenance</h2>
-    </div>
-    <form id="blockForm" class="panel-form">
-      <div class="form-row">
-        <label>Facility*
-          <select name="facility_id" required>
-            <option value="pool">Swimming Pool</option>
-            <option value="badminton_1">Badminton Court 1</option>
-            <option value="badminton_2">Badminton Court 2</option>
-          </select>
-        </label>
-        <label>Reason
-          <input type="text" name="reason" placeholder="Maintenance, cleaning...">
-        </label>
-      </div>
-      <div class="form-row">
-        <label>From*
-          <input type="datetime-local" name="start_at" required>
-        </label>
-        <label>To*
-          <input type="datetime-local" name="end_at" required>
-        </label>
-      </div>
-      <button type="submit" class="btn btn-primary">Add Block</button>
-    </form>
-    <p id="blockAdminNote" class="muted small" hidden>Blocking a facility for maintenance is an Admin-only action — ask an Admin to add or remove one.</p>
-
-    <div id="blockList" class="enquiry-list" style="margin-top:16px;"></div>
-
-    <div class="page-head" style="margin-top:44px;">
-      <h2>🏸 Members-Reserved Hours</h2>
-    </div>
-    <p class="muted" style="margin:-8px 0 20px;">Badminton courts reserve 05:00–08:00 and 17:00–23:00 for members by default. Open a specific date's window below to allow public booking for it.</p>
-    <form id="unblockForm" class="panel-form">
-      <div class="form-row">
-        <label>Court*
-          <select name="facility_id" required>
-            <option value="badminton_1">Badminton Court 1</option>
-            <option value="badminton_2">Badminton Court 2</option>
-          </select>
-        </label>
-        <label>Date*
-          <input type="date" name="booking_date" required>
-        </label>
-      </div>
-      <div class="form-row">
-        <label>From*
-          <select name="start_time" required>
-            <option value="05:00">05:00</option>
-            <option value="17:00">17:00</option>
-          </select>
-        </label>
-        <label>To*
-          <select name="end_time" required>
-            <option value="08:00">08:00</option>
-            <option value="23:00" selected>23:00</option>
-          </select>
-        </label>
-      </div>
-      <div class="form-row">
-        <label>Reason
-          <input type="text" name="reason" placeholder="Tournament, open club day...">
-        </label>
-      </div>
-      <button type="submit" class="btn btn-primary">Open This Window</button>
-    </form>
-
-    <div id="unblockList" class="enquiry-list" style="margin-top:16px;"></div>
+    <div id="hourlyPager" class="pager-row" style="margin-top:12px; text-align:center;"></div>
   </div>
 
   <!-- Edit Booking modal (date/time/guests/mode — not payment or status) -->
@@ -189,6 +209,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../js/supabase-client.js"></script>
 <script src="js/admin-auth.js"></script>
+<script src="js/list-controls.js"></script>
 <script src="js/hourly-bookings.js"></script>
 </body>
 </html>

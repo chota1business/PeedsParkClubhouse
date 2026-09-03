@@ -49,9 +49,22 @@
       <button id="openAddEnquiryBtn" class="btn btn-primary btn-sm">+ Add Enquiry</button>
     </div>
 
+    <div class="form-row" style="margin:12px 0;">
+      <label>Search
+        <input type="search" id="enquirySearch" placeholder="Name or phone…">
+      </label>
+      <label>From
+        <input type="date" id="enquiryDateFrom">
+      </label>
+      <label>To
+        <input type="date" id="enquiryDateTo">
+      </label>
+    </div>
+
     <div id="enquiryList" class="enquiry-list">
       <p class="muted center" style="padding:40px;">Loading enquiries…</p>
     </div>
+    <div id="enquiryPager" class="pager-row" style="margin-top:12px; text-align:center;"></div>
   </div>
 
   <!-- Add / Edit Enquiry modal -->
@@ -178,6 +191,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../js/supabase-client.js"></script>
 <script src="js/admin-auth.js"></script>
+<script src="js/list-controls.js"></script>
 <script src="js/enquiries.js"></script>
 </body>
 </html>

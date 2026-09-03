@@ -25,9 +25,9 @@ const HALL_LAWN_IDS = ["ac_hall", "non_ac_hall", "lawn"];
 let staff = null;
 let allFeed = [];
 let activeType = "all";
-let searchTerm = "";
 let allExpenses = [];
 let activeMonthFilter = "current";
+let listControls = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   const session = await requireStaffSession();
@@ -76,13 +76,19 @@ function wireActivityControls() {
       document.querySelectorAll("[data-type]").forEach((c) => c.classList.remove("active"));
       chip.classList.add("active");
       activeType = chip.dataset.type;
+      listControls?.resetPage();
       renderFeed();
     });
   });
 
-  document.getElementById("feedSearch").addEventListener("input", (e) => {
-    searchTerm = e.target.value.trim().toLowerCase();
-    renderFeed();
+  listControls = createListControls({
+    searchInputId: "feedSearch",
+    dateFromId: "feedDateFrom",
+    dateToId: "feedDateTo",
+    pagerContainerId: "feedPager",
+    searchText: (r) => `${r.customer_name} ${r.phone}`,
+    dateField: (r) => r.activity_date,
+    onChange: renderFeed,
   });
 }
 
@@ -99,6 +105,7 @@ async function loadFeed() {
   }
 
   allFeed = data || [];
+  listControls?.resetPage();
   renderFeed();
 }
 
@@ -107,18 +114,16 @@ function renderFeed() {
   let rows = allFeed;
 
   if (activeType !== "all") rows = rows.filter((r) => r.record_type === activeType);
-  if (searchTerm) {
-    rows = rows.filter((r) =>
-      (r.customer_name || "").toLowerCase().includes(searchTerm) || (r.phone || "").includes(searchTerm)
-    );
-  }
+  rows = listControls ? listControls.apply(rows) : rows;
 
   if (rows.length === 0) {
-    container.innerHTML = `<p class="muted center" style="padding:40px;">Nothing here${searchTerm ? " for that search" : ""}.</p>`;
+    container.innerHTML = `<p class="muted center" style="padding:40px;">Nothing here for the current search/filter.</p>`;
+    listControls?.renderPager(0);
     return;
   }
 
-  container.innerHTML = rows.map(feedRowHtml).join("");
+  const page = listControls ? listControls.paginate(rows) : { rows };
+  container.innerHTML = page.rows.map(feedRowHtml).join("");
 
   container.querySelectorAll("select.status-select").forEach((sel) => {
     sel.addEventListener("change", (e) => updateEnquiryStatus(e.target.dataset.id, e.target.value));
@@ -129,6 +134,7 @@ function renderFeed() {
   container.querySelectorAll("[data-convert]").forEach((btn) => {
     btn.addEventListener("click", () => openConvertModal(btn.dataset.convert));
   });
+  listControls?.renderPager(rows.length);
 }
 
 function feedRowHtml(r) {
@@ -163,9 +169,9 @@ function feedRowHtml(r) {
     const actions = [];
     if (r.status === "pending") {
       actions.push(`<button class="btn btn-primary btn-sm" data-id="${r.id}" data-record-type="${r.record_type}" data-action="approve">✅ Approve</button>`);
-      actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${r.id}" data-record-type="${r.record_type}" data-action="reject">❌ Reject</button>`);
     }
-    if (r.status === "approved") {
+    // Reject (pending) and Cancel (approved) are the same button now.
+    if (r.status === "pending" || r.status === "approved") {
       actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${r.id}" data-record-type="${r.record_type}" data-action="cancel">🚫 Cancel</button>`);
     }
     actionsHtml = actions.join("");
@@ -220,12 +226,28 @@ async function handleBookingAction(id, recordType, action) {
   const row = allFeed.find((r) => r.id === id && r.record_type === recordType);
   if (!row) return;
 
+  // One button covers both the old "Reject" (pending) and "Cancel"
+  // (approved) — decided by the booking's current status, matching the same
+  // fold applied on the dedicated Bookings / Pool & Badminton pages.
   if (action === "cancel") {
+    const isPending = row.status === "pending";
     const reason = prompt(
-      `Cancel the approved booking ${row.code} for ${row.customer_name}? This frees the slot back up.\n\nReason for cancellation (staff only, optional):`,
+      isPending
+        ? `Decline the pending request ${row.code} for ${row.customer_name}? This cannot be undone from here.\n\nReason (staff only, optional):`
+        : `Cancel the approved booking ${row.code} for ${row.customer_name}? This frees the slot back up.\n\nReason for cancellation (staff only, optional):`,
       ""
     );
     if (reason === null) return;
+
+    if (isPending) {
+      const update = { status: "rejected", updated_at: new Date().toISOString() };
+      const { error } = await supabaseClient.from(table).update(update).eq("id", id);
+      if (error) { alert("Couldn't update this booking: " + error.message); return; }
+      await writeAudit(`reject_${recordType}`, table, id, { code: row.code });
+      row.status = "rejected";
+      renderFeed();
+      return;
+    }
 
     const update = {
       status: "cancelled",
@@ -277,19 +299,6 @@ async function handleBookingAction(id, recordType, action) {
     renderFeed();
     return;
   }
-
-  if (!confirm(`Reject ${row.code}? This cannot be undone from here.`)) return;
-
-  const update = { status: "rejected", updated_at: new Date().toISOString() };
-  const { error } = await supabaseClient.from(table).update(update).eq("id", id);
-  if (error) {
-    alert("Couldn't update this booking: " + error.message);
-    return;
-  }
-
-  await writeAudit(`reject_${recordType}`, table, id, { code: row.code });
-  row.status = update.status;
-  renderFeed();
 }
 
 // ---------- Add Booking modal ----------

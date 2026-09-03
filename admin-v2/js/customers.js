@@ -7,7 +7,7 @@
 let currentStaff = null;
 let allCustomers = [];
 let activeSort = "recent";
-let searchTerm = "";
+let listControls = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   const session = await requireStaffSession();
@@ -23,13 +23,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
       activeSort = chip.dataset.sort;
+      listControls?.resetPage();
       renderList();
     });
   });
 
-  document.getElementById("customerSearch").addEventListener("input", (e) => {
-    searchTerm = e.target.value.trim().toLowerCase();
-    renderList();
+  // Customers have no single "booking date" — customer_activity only carries
+  // first_seen_at/last_seen_at timestamps, so the date range here filters on
+  // last_seen_at (the most useful "when were they last active" reading).
+  listControls = createListControls({
+    searchInputId: "customerSearch",
+    dateFromId: "customerDateFrom",
+    dateToId: "customerDateTo",
+    pagerContainerId: "customerPager",
+    searchText: (c) => `${c.name} ${c.phone}`,
+    dateField: (c) => (c.last_seen_at ? c.last_seen_at.slice(0, 10) : null),
+    onChange: renderList,
   });
 
   await loadCustomers();
@@ -47,18 +56,13 @@ async function loadCustomers() {
   }
 
   allCustomers = data || [];
+  listControls?.resetPage();
   renderList();
 }
 
 function renderList() {
   const container = document.getElementById("customerList");
-  let rows = allCustomers;
-
-  if (searchTerm) {
-    rows = rows.filter(c =>
-      c.name.toLowerCase().includes(searchTerm) || c.phone.includes(searchTerm)
-    );
-  }
+  let rows = listControls ? listControls.apply(allCustomers) : allCustomers;
 
   rows = [...rows].sort((a, b) => {
     if (activeSort === "frequent") {
@@ -70,15 +74,18 @@ function renderList() {
   });
 
   if (rows.length === 0) {
-    container.innerHTML = `<p class="muted center" style="padding:40px;">No customers ${searchTerm ? "match that search" : "yet"}.</p>`;
+    container.innerHTML = `<p class="muted center" style="padding:40px;">No customers match the current search/filter.</p>`;
+    listControls?.renderPager(0);
     return;
   }
 
-  container.innerHTML = rows.map(rowHtml).join("");
+  const page = listControls ? listControls.paginate(rows) : { rows };
+  container.innerHTML = page.rows.map(rowHtml).join("");
 
   container.querySelectorAll("[data-notes-id]").forEach(btn => {
     btn.addEventListener("click", () => editNotes(btn.dataset.notesId));
   });
+  listControls?.renderPager(rows.length);
 }
 
 function rowHtml(c) {

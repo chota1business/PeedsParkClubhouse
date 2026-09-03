@@ -6,6 +6,7 @@ const FACILITY_LABELS = { ac_hall: "AC Hall", non_ac_hall: "Non-AC Hall", lawn: 
 let staff = null;
 let allBookings = [];
 let activeFilter = "all";
+let listControls = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   const session = await requireStaffSession();
@@ -21,8 +22,26 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
       activeFilter = chip.dataset.status;
+      listControls?.resetPage();
       renderBookings();
     });
+  });
+
+  listControls = createListControls({
+    searchInputId: "bookingSearch",
+    dateFromId: "bookingDateFrom",
+    dateToId: "bookingDateTo",
+    pagerContainerId: "bookingPager",
+    searchText: (b) => `${b.customer_name} ${b.phone}`,
+    dateField: (b) => b.booking_date,
+    onChange: renderBookings,
+  });
+
+  const toggleBlocksBtn = document.getElementById("toggleBlocksBtn");
+  const blocksPanel = document.getElementById("blocksPanel");
+  toggleBlocksBtn?.addEventListener("click", () => {
+    blocksPanel.hidden = !blocksPanel.hidden;
+    toggleBlocksBtn.textContent = blocksPanel.hidden ? "🚫 Manage Blocks" : "✖ Close Blocks";
   });
 
   document.getElementById("blockForm").addEventListener("submit", createBlock);
@@ -49,22 +68,27 @@ async function loadBookings() {
     return;
   }
   allBookings = data || [];
+  listControls?.resetPage();
   renderBookings();
 }
 
 function renderBookings() {
   const container = document.getElementById("bookingList");
-  const rows = activeFilter === "all" ? allBookings : allBookings.filter(b => b.status === activeFilter);
+  let rows = activeFilter === "all" ? allBookings : allBookings.filter(b => b.status === activeFilter);
+  rows = listControls ? listControls.apply(rows) : rows;
 
   if (rows.length === 0) {
     container.innerHTML = `<p class="muted center" style="padding:40px;">No bookings here.</p>`;
+    listControls?.renderPager(0);
     return;
   }
 
-  container.innerHTML = rows.map(bookingRowHtml).join("");
+  const page = listControls ? listControls.paginate(rows) : { rows };
+  container.innerHTML = page.rows.map(bookingRowHtml).join("");
   container.querySelectorAll("[data-action]").forEach(btn => {
     btn.addEventListener("click", () => handleBookingAction(btn.dataset.id, btn.dataset.action));
   });
+  listControls?.renderPager(rows.length);
 }
 
 function bookingRowHtml(b) {
@@ -73,13 +97,15 @@ function bookingRowHtml(b) {
   const actions = [];
   if (b.status === "pending") {
     actions.push(`<button class="btn btn-primary btn-sm" data-id="${b.id}" data-action="approve">✅ Approve</button>`);
-    actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="reject">❌ Reject</button>`);
   }
-  if (b.status === "approved") {
+  // Reject (pending) and Cancel (approved) are the same button now — Cancel
+  // decides what it means from the booking's own current status, so staff
+  // only ever have one "stop this booking" action to reach for.
+  if (b.status === "pending" || b.status === "approved") {
     actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="cancel">🚫 Cancel</button>`);
-    if (b.payment_status !== "received") {
-      actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="update_payment">💰 Update Payment</button>`);
-    }
+  }
+  if (b.status === "approved" && b.payment_status !== "received") {
+    actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="update_payment">💰 Update Payment</button>`);
   }
   if (b.status === "pending") {
     // Once approved, editing details is no longer offered here — cancel and
@@ -132,22 +158,6 @@ async function handleBookingAction(id, action) {
   if (action === "approve") return approveWithPayment(booking);
   if (action === "update_payment") return updatePayment(booking);
   if (action === "edit") return openEditBookingModal(booking);
-
-  const confirmMsgs = {
-    reject: `Reject booking ${booking.booking_code}? This cannot be undone from here.`,
-  };
-  if (!confirm(confirmMsgs[action])) return;
-
-  const update = { status: "rejected", updated_at: new Date().toISOString() };
-  const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", id);
-  if (error) {
-    alert("Couldn't update this booking: " + error.message);
-    return;
-  }
-
-  await writeAudit("reject_booking", "booking_requests", id, { booking_code: booking.booking_code });
-  Object.assign(booking, update);
-  renderBookings();
 }
 
 // Hall/Lawn/AC/Non-AC allow a Partial (advance) payment — every facility on
@@ -221,12 +231,33 @@ async function updatePayment(booking) {
   renderBookings();
 }
 
+// One button covers both the old "Reject" (a pending request that never
+// gets approved) and "Cancel" (an already-approved booking called off) —
+// which of the two happens is decided by the booking's own current status,
+// not by which button was clicked. A pending booking becomes 'rejected';
+// an approved one becomes 'cancelled' and frees its slot.
 async function cancelBooking(booking) {
+  const isPending = booking.status === "pending";
   const reason = prompt(
-    `Cancel the approved booking ${booking.booking_code} for ${booking.customer_name}? This frees the slot back up.\n\nReason for cancellation (shown to staff only, optional):`,
+    isPending
+      ? `Decline the pending request ${booking.booking_code} for ${booking.customer_name}? This cannot be undone from here.\n\nReason (shown to staff only, optional):`
+      : `Cancel the approved booking ${booking.booking_code} for ${booking.customer_name}? This frees the slot back up.\n\nReason for cancellation (shown to staff only, optional):`,
     ""
   );
   if (reason === null) return; // staff backed out of the dialog entirely
+
+  if (isPending) {
+    const update = { status: "rejected", updated_at: new Date().toISOString() };
+    const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", booking.id);
+    if (error) {
+      alert("Couldn't update this booking: " + error.message);
+      return;
+    }
+    await writeAudit("reject_booking", "booking_requests", booking.id, { booking_code: booking.booking_code });
+    Object.assign(booking, update);
+    renderBookings();
+    return;
+  }
 
   const update = {
     status: "cancelled",
