@@ -24,6 +24,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("staffName").textContent = staff.full_name;
   document.getElementById("staffRole").textContent = staff.role;
+
+  // Analytics is Admin-only — a Manager who navigates here directly (not just
+  // via the Dashboard, which already hides the tile) gets the same
+  // "not authorised" panel every other protected page uses.
+  if (staff.role !== "admin") {
+    document.getElementById("notAuthorised")?.removeAttribute("hidden");
+    return;
+  }
+
   document.getElementById("pageContent").hidden = false;
 
   document.querySelectorAll("[data-range]").forEach((chip) => {

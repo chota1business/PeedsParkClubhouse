@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("welcomeName").textContent = `, ${staff.full_name}`;
 
   if (staff.role === "admin") {
-    document.getElementById("staffTile")?.removeAttribute("hidden");
+    document.getElementById("adminOnlyTiles")?.removeAttribute("hidden");
   }
 
   document.getElementById("dashboardContent").hidden = false;

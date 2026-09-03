@@ -154,7 +154,7 @@ async function handleBookingAction(id, action) {
 // request: no booking gets confirmed to the customer without payment being
 // recorded first.
 async function approveWithPayment(booking) {
-  const entry = promptPaymentEntry({
+  const entry = await promptPaymentEntry({
     allowPartial: true,
     label: `Approve ${booking.booking_code} for ${booking.customer_name}`,
   });
@@ -192,7 +192,7 @@ async function approveWithPayment(booking) {
 }
 
 async function updatePayment(booking) {
-  const entry = promptPaymentEntry({
+  const entry = await promptPaymentEntry({
     allowPartial: true,
     previousTotal: booking.total_amount,
     previousPaid: booking.amount_paid,

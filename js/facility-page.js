@@ -266,6 +266,7 @@ async function refreshSlotPicker(config) {
         remaining: slot.remaining, capacity: slot.capacity, bookingModel: data.bookingModel, humanLabel,
       };
       showBookingDetails(config, humanLabel);
+      updateDurationOptions(slots, slot.start);
     });
     return;
   }
@@ -306,6 +307,41 @@ function showBookingDetails(config, slotLabel) {
   wrap.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+// Limits the Duration dropdown to only durations that stay fully inside
+// consecutive Available hours from the picked start time — e.g. Badminton
+// courts have reserved member hours outside 08:00-17:00, so a court opening
+// at 15:00 can only take a 1- or 2-hour booking, not 3, even though 3 hours
+// is offered as an option. This stops the customer from picking a duration
+// that the server will reject with a members-reserved-hours error.
+function updateDurationOptions(slots, startTime) {
+  const select = document.getElementById("bookDuration");
+  if (!select) return;
+
+  const startIndex = slots.findIndex((s) => s.start === startTime);
+  let maxDuration = 1;
+  if (startIndex !== -1) {
+    maxDuration = 0;
+    for (let i = startIndex; i < slots.length; i++) {
+      if (slots[i].status !== "Available") break;
+      maxDuration++;
+    }
+    if (maxDuration < 1) maxDuration = 1;
+  }
+
+  let firstEnabledValue = null;
+  Array.from(select.options).forEach((opt) => {
+    const hours = Number(opt.value);
+    const allowed = hours <= maxDuration;
+    opt.disabled = !allowed;
+    opt.hidden = !allowed;
+    if (allowed && firstEnabledValue === null) firstEnabledValue = opt.value;
+  });
+
+  if (select.selectedOptions[0]?.disabled && firstEnabledValue !== null) {
+    select.value = firstEnabledValue;
+  }
+}
+
 function backToSlotPicker() {
   const wrap = document.getElementById("bookingDetailsWrap");
   const placeholder = document.getElementById("bookingPlaceholder");
@@ -318,6 +354,13 @@ function backToSlotPicker() {
   if (form) form.hidden = false;
   if (confirmation) confirmation.hidden = true;
   document.getElementById("pageBookingForm")?.reset();
+  const durationSelect = document.getElementById("bookDuration");
+  if (durationSelect) {
+    Array.from(durationSelect.options).forEach((opt) => {
+      opt.disabled = false;
+      opt.hidden = false;
+    });
+  }
 }
 
 function facilityLabelFor(config, facilityId) {
@@ -415,6 +458,8 @@ async function submitBooking(e, config) {
       msg = "You've sent a few requests recently — please wait a bit, or WhatsApp us directly.";
     } else if (error.message?.includes("Capacity exceeded") || error.message?.includes("conflicts with")) {
       msg = "That slot is already full or booked exclusively — please try a different time.";
+    } else if (error.message?.includes("members-reserved hours") || error.message?.includes("hasn't been opened for public booking")) {
+      msg = "Part of this time falls within members-reserved hours and isn't open for public booking yet — please choose a shorter duration or a different time.";
     }
     showFormError("bookFormError", msg);
     return;

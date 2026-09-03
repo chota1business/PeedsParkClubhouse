@@ -315,7 +315,7 @@ async function submitConvert(e) {
 
   let paymentEntry = null;
   if (markApproved) {
-    paymentEntry = promptPaymentEntry({
+    paymentEntry = await promptPaymentEntry({
       allowPartial: isHallLawn,
       label: `Approve this booking for ${enquiry.customer_name}`,
     });

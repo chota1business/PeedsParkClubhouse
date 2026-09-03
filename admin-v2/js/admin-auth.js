@@ -64,52 +64,149 @@ function setupLoginForm(form) {
   });
 }
 
-// Shared payment-entry prompt, used everywhere a booking gets approved or
+// Shared payment-entry modal, used everywhere a booking gets approved or
 // an existing payment gets topped up (Bookings, Pool & Badminton, Manager
-// Feed). Returns { total_amount, amount_paid, payment_status } or null if
-// the manager backs out or enters something invalid — they can just
-// re-click the button to try again.
+// Feed). Returns a Promise resolving to { total_amount, amount_paid, payment_status }
+// or null if the manager cancels — they can just re-click the button to try again.
 //   allowPartial: false for Pool/Badminton (must be paid in full — DB-enforced
 //     backstop too), true for Hall/Lawn/AC/Non-AC (50% advance allowed).
 //   previousTotal/previousPaid: pre-fill when topping up an existing booking's payment.
 function promptPaymentEntry({ allowPartial, previousTotal, previousPaid, label }) {
-  const totalStr = prompt(
-    `${label} — total amount for this booking (₹):`,
-    previousTotal != null ? String(previousTotal) : ""
-  );
-  if (totalStr === null) return null;
-  const total = Number(totalStr);
-  if (!Number.isFinite(total) || total < 0) {
-    alert("Enter a valid total amount (0 or more).");
-    return null;
-  }
+  return new Promise((resolve) => {
+    ensurePaymentModalStyles();
 
-  const paidStr = prompt(
-    `${label} — amount paid so far (₹), out of ₹${total}:`,
-    previousPaid != null ? String(previousPaid) : ""
-  );
-  if (paidStr === null) return null;
-  const paid = Number(paidStr);
-  if (!Number.isFinite(paid) || paid < 0) {
-    alert("Enter a valid amount paid (0 or more).");
-    return null;
-  }
-  if (paid > total) {
-    alert("Amount paid can't be more than the total amount.");
-    return null;
-  }
+    const backdrop = document.createElement("div");
+    backdrop.className = "pp-modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="pp-modal-card" role="dialog" aria-modal="true" aria-labelledby="ppModalTitle">
+        <h3 id="ppModalTitle" class="pp-modal-title">${escapeHtmlLocal(label || "Enter payment")}</h3>
+        <p class="pp-modal-error" hidden></p>
+        <label class="pp-modal-field">
+          <span>Total amount for this booking (₹)</span>
+          <input type="number" min="0" step="1" id="ppTotalInput" inputmode="decimal">
+        </label>
+        <label class="pp-modal-field">
+          <span>Amount paid so far (₹)</span>
+          <input type="number" min="0" step="1" id="ppPaidInput" inputmode="decimal">
+        </label>
+        <p class="pp-modal-partial-note"${allowPartial ? " hidden" : ""}>This facility must be paid in full before it can be approved — partial payment isn't allowed here.</p>
+        <div class="pp-modal-actions">
+          <button type="button" class="btn btn-outline-dark pp-modal-cancel">Cancel</button>
+          <button type="button" class="btn btn-primary pp-modal-save">Save</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
 
-  let payment_status;
-  if (paid >= total) payment_status = "received"; // covers a ₹0/₹0 complimentary booking too
-  else if (paid > 0) payment_status = "partial";
-  else payment_status = "unpaid";
+    const totalInput = backdrop.querySelector("#ppTotalInput");
+    const paidInput = backdrop.querySelector("#ppPaidInput");
+    const errorEl = backdrop.querySelector(".pp-modal-error");
+    const saveBtn = backdrop.querySelector(".pp-modal-save");
+    const cancelBtn = backdrop.querySelector(".pp-modal-cancel");
 
-  if (payment_status === "partial" && !allowPartial) {
-    alert("This facility must be paid in full before it can be approved — partial payment isn't allowed here.");
-    return null;
-  }
+    totalInput.value = previousTotal != null ? String(previousTotal) : "";
+    paidInput.value = previousPaid != null ? String(previousPaid) : "";
 
-  return { total_amount: total, amount_paid: paid, payment_status };
+    function cleanup(result) {
+      document.removeEventListener("keydown", onKeydown);
+      backdrop.remove();
+      resolve(result);
+    }
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.hidden = false;
+    }
+
+    function submit() {
+      errorEl.hidden = true;
+      const total = Number(totalInput.value);
+      if (totalInput.value.trim() === "" || !Number.isFinite(total) || total < 0) {
+        showError("Enter a valid total amount (0 or more).");
+        totalInput.focus();
+        return;
+      }
+      const paid = Number(paidInput.value);
+      if (paidInput.value.trim() === "" || !Number.isFinite(paid) || paid < 0) {
+        showError("Enter a valid amount paid (0 or more).");
+        paidInput.focus();
+        return;
+      }
+      if (paid > total) {
+        showError("Amount paid can't be more than the total amount.");
+        paidInput.focus();
+        return;
+      }
+
+      let payment_status;
+      if (paid >= total) payment_status = "received"; // covers a ₹0/₹0 complimentary booking too
+      else if (paid > 0) payment_status = "partial";
+      else payment_status = "unpaid";
+
+      if (payment_status === "partial" && !allowPartial) {
+        showError("This facility must be paid in full before it can be approved — partial payment isn't allowed here.");
+        return;
+      }
+
+      cleanup({ total_amount: total, amount_paid: paid, payment_status });
+    }
+
+    function onKeydown(e) {
+      if (e.key === "Escape") cleanup(null);
+      if (e.key === "Enter") submit();
+    }
+
+    saveBtn.addEventListener("click", submit);
+    cancelBtn.addEventListener("click", () => cleanup(null));
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) cleanup(null);
+    });
+    document.addEventListener("keydown", onKeydown);
+
+    totalInput.focus();
+  });
+}
+
+function escapeHtmlLocal(str) {
+  return String(str ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+function ensurePaymentModalStyles() {
+  if (document.getElementById("ppModalStyles")) return;
+  const style = document.createElement("style");
+  style.id = "ppModalStyles";
+  style.textContent = `
+    .pp-modal-backdrop {
+      position: fixed; inset: 0; background: rgba(20, 20, 30, 0.55);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999; padding: 16px;
+    }
+    .pp-modal-card {
+      background: #fff; border-radius: 14px; padding: 24px;
+      width: 100%; max-width: 420px; box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+      font-weight: 700; color: #1a1a2e;
+    }
+    .pp-modal-title { margin: 0 0 16px; font-size: 1.15rem; font-weight: 800; color: #1a1a2e; }
+    .pp-modal-error {
+      background: #ffe3e3; color: #b3261e; border-radius: 8px;
+      padding: 8px 12px; margin: 0 0 14px; font-weight: 700; font-size: 0.9rem;
+    }
+    .pp-modal-field { display: block; margin-bottom: 14px; font-weight: 700; color: #1a1a2e; }
+    .pp-modal-field span { display: block; margin-bottom: 6px; font-weight: 700; color: #1a1a2e; }
+    .pp-modal-field input {
+      width: 100%; padding: 10px 12px; font-size: 1rem; font-weight: 700;
+      border: 2px solid #ccc; border-radius: 8px; color: #1a1a2e; box-sizing: border-box;
+    }
+    .pp-modal-field input:focus { outline: none; border-color: #2b6cb0; }
+    .pp-modal-partial-note {
+      background: #fff4d6; color: #7a5200; border-radius: 8px;
+      padding: 8px 12px; margin: 0 0 14px; font-weight: 700; font-size: 0.85rem;
+    }
+    .pp-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+  `;
+  document.head.appendChild(style);
 }
 
 // Call from any protected admin-v2 page. Redirects to login if not authenticated,

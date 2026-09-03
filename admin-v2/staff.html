@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Staff Management — PeedsPark Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/manager-feed.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="container admin-header-inner">
+    <a href="dashboard.html" class="brand">
+      <img src="../images/peedspark-logo.jpg" alt="PeedsPark Club House logo">
+      <div><strong>Peeds Park</strong><span>Admin</span></div>
+    </a>
+    <div class="admin-user">
+      <span id="staffName">Loading…</span>
+      <span id="staffRole" class="role-badge"></span>
+      <button id="logoutBtn" class="btn btn-outline-dark">Log Out</button>
+    </div>
+  </div>
+</header>
+
+<main class="container admin-main">
+  <div id="notAuthorised" hidden class="policy-card" style="border-left:6px solid var(--coral); max-width:520px; margin:60px auto;">
+    <h3>Not authorised</h3>
+    <p>Staff Management is Admin only.</p>
+    <a class="btn btn-primary" href="dashboard.html">Back to Dashboard</a>
+  </div>
+
+  <div id="pageContent" hidden>
+    <div class="page-head">
+      <a href="dashboard.html" class="back-link">&larr; Dashboard</a>
+      <h2>👥 Staff Management</h2>
+    </div>
+    <p class="muted" style="margin:-8px 0 20px;">Create Manager or Admin logins here — new staff sign in with the email and password you set below.</p>
+
+    <button id="addStaffBtn" class="btn btn-primary" style="margin-bottom:20px;">+ Add Staff</button>
+
+    <div id="staffList" class="enquiry-list">
+      <p class="muted center" style="padding:40px;">Loading staff…</p>
+    </div>
+  </div>
+</main>
+
+<div id="addStaffModal" class="modal-backdrop" hidden>
+  <div class="modal-card">
+    <button type="button" class="modal-close" id="closeStaffModal">&times;</button>
+    <h3>Add Staff</h3>
+    <p class="form-note-error" id="staffFormError" hidden></p>
+    <form id="addStaffForm">
+      <label>Full name
+        <input type="text" name="full_name" required minlength="2">
+      </label>
+      <label>Email (used to log in)
+        <input type="email" name="email" required>
+      </label>
+      <label>Phone
+        <input type="tel" name="phone" inputmode="numeric" placeholder="10-digit mobile number (optional)">
+      </label>
+      <div class="modal-row">
+        <label>Role
+          <select name="role" required>
+            <option value="manager">Manager</option>
+            <option value="admin">Admin</option>
+          </select>
+        </label>
+        <label>Temporary password
+          <input type="text" name="password" required minlength="8" placeholder="At least 8 characters">
+        </label>
+      </div>
+      <p class="muted" style="font-size:0.85rem;margin-top:10px;">Share this password with them directly — they can log in right away and there's no separate invite email.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline-dark" id="cancelStaffModal">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveStaffBtn">Create Login</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../js/supabase-client.js"></script>
+<script src="js/admin-auth.js"></script>
+<script src="js/staff.js"></script>
+</body>
+</html>

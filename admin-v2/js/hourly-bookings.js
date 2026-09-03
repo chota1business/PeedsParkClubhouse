@@ -236,7 +236,7 @@ async function handleAction(id, action) {
 // Pool/Badminton must be paid in full to approve — no Partial here (DB-enforced
 // backstop too: hourly_bookings_no_partial_check).
 async function approveWithPayment(booking) {
-  const entry = promptPaymentEntry({
+  const entry = await promptPaymentEntry({
     allowPartial: false,
     label: `Approve ${booking.booking_code} for ${booking.customer_name}`,
   });
@@ -274,7 +274,7 @@ async function approveWithPayment(booking) {
 }
 
 async function updatePayment(booking) {
-  const entry = promptPaymentEntry({
+  const entry = await promptPaymentEntry({
     allowPartial: false,
     previousTotal: booking.total_amount,
     previousPaid: booking.amount_paid,

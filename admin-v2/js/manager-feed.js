@@ -46,6 +46,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   wireTabs();
   wireActivityControls();
   wireAddBookingModal();
+  wireAddEnquiryModal();
+  wireConvertModal();
   wireExpensesControls();
   wireAddExpenseModal();
 
@@ -124,6 +126,9 @@ function renderFeed() {
   container.querySelectorAll("[data-action]").forEach((btn) => {
     btn.addEventListener("click", () => handleBookingAction(btn.dataset.id, btn.dataset.recordType, btn.dataset.action));
   });
+  container.querySelectorAll("[data-convert]").forEach((btn) => {
+    btn.addEventListener("click", () => openConvertModal(btn.dataset.convert));
+  });
 }
 
 function feedRowHtml(r) {
@@ -149,7 +154,8 @@ function feedRowHtml(r) {
         ${Object.entries(ENQUIRY_STATUS_LABELS).map(([val, label]) =>
           `<option value="${val}" ${val === r.status ? "selected" : ""}>${label}</option>`
         ).join("")}
-      </select>`;
+      </select>
+      ${r.status !== "converted" ? `<button class="btn btn-primary btn-sm" data-convert="${r.id}">📅 Convert to Booking</button>` : ""}`;
   } else {
     // hall_lawn_booking / hourly_booking share the same pending/approved/cancelled actions here.
     // Payment marking, refunds, and blocks stay on the dedicated Bookings /
@@ -237,7 +243,7 @@ async function handleBookingAction(id, recordType, action) {
 
   if (action === "approve") {
     const allowPartial = recordType === "hall_lawn_booking";
-    const entry = promptPaymentEntry({
+    const entry = await promptPaymentEntry({
       allowPartial,
       label: `Approve ${row.code} for ${row.customer_name}`,
     });
@@ -339,7 +345,7 @@ async function submitAddBooking(e) {
   // can't be marked approved without payment being recorded.
   let paymentEntry = null;
   if (markApproved) {
-    paymentEntry = promptPaymentEntry({
+    paymentEntry = await promptPaymentEntry({
       allowPartial: isHallLawn,
       label: `Approve this booking for ${data.customer_name.trim()}`,
     });
@@ -427,6 +433,230 @@ async function submitAddBooking(e) {
   form.reset();
   document.getElementById("bookingDateInput").min = new Date().toISOString().slice(0, 10);
   alert(`Saved as ${code}.`);
+  await loadFeed();
+}
+
+// ---------- Add Enquiry modal ----------
+
+function wireAddEnquiryModal() {
+  const modal = document.getElementById("enquiryModal");
+  document.getElementById("openAddEnquiryBtn").addEventListener("click", () => openEnquiryModal());
+  document.getElementById("closeEnquiryModalBtn").addEventListener("click", () => { modal.hidden = true; });
+
+  const phoneInput = document.getElementById("enquiryPhoneInput2");
+  phoneInput.addEventListener("input", () => {
+    phoneInput.value = phoneInput.value.replace(/\D/g, "").slice(0, 10);
+  });
+
+  document.getElementById("enquiryForm2").addEventListener("submit", submitEnquiryModal);
+}
+
+function openEnquiryModal() {
+  const modal = document.getElementById("enquiryModal");
+  const form = document.getElementById("enquiryForm2");
+  form.reset();
+  document.getElementById("enquiryModalTitle").textContent = "Add Enquiry";
+  form.elements["id"].value = "";
+  modal.hidden = false;
+}
+
+async function submitEnquiryModal(e) {
+  e.preventDefault();
+  const form = e.target;
+  const data = Object.fromEntries(new FormData(form).entries());
+
+  if (!/^[0-9]{10}$/.test(data.phone)) {
+    alert("Please enter a valid 10-digit mobile number.");
+    return;
+  }
+  if (!data.customer_name || data.customer_name.trim().length < 2) {
+    alert("Please enter the customer's name.");
+    return;
+  }
+
+  const submitBtn = form.querySelector("button[type=submit]");
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Saving...";
+
+  // Phoned-in enquiry — goes through the same submit_enquiry() path the
+  // public site uses, so it gets a real enquiry code and the same validation.
+  const { data: result, error } = await supabaseClient.rpc("submit_enquiry", {
+    p_customer_name: data.customer_name.trim(),
+    p_phone: data.phone.trim(),
+    p_email: data.email?.trim() || null,
+    p_facility_id: data.facility_id || null,
+    p_preferred_date: data.preferred_date || null,
+    p_guests: data.guests ? Number(data.guests) : null,
+    p_message: data.message?.trim() || null,
+    p_source: "phone",
+  });
+
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Save Enquiry";
+
+  if (error) {
+    alert("Couldn't save this enquiry: " + error.message);
+    return;
+  }
+  await writeAudit("add_enquiry", "enquiries", null, { code: result?.[0]?.enquiry_code, phoned_in: true });
+
+  document.getElementById("enquiryModal").hidden = true;
+  await loadFeed();
+}
+
+// ---------- Convert Enquiry to Booking modal ----------
+
+let convertingEnquiry = null;
+
+function wireConvertModal() {
+  const modal = document.getElementById("convertModal");
+  document.getElementById("closeConvertModalBtn").addEventListener("click", () => { modal.hidden = true; });
+
+  const facilitySelect = document.getElementById("convertFacilitySelect");
+  const toggleFields = () => {
+    const isHallLawn = HALL_LAWN_IDS.includes(facilitySelect.value);
+    document.getElementById("convertFixedSlotFields").hidden = !isHallLawn;
+    document.getElementById("convertHourlyFields").hidden = isHallLawn;
+    document.getElementById("convertModeFieldWrap").hidden = facilitySelect.value !== "pool";
+  };
+  facilitySelect.addEventListener("change", toggleFields);
+
+  document.getElementById("convertForm").addEventListener("submit", submitConvert);
+}
+
+// Feed rows are the trimmed manager_activity_feed view (no guests/message
+// columns), so pull the full enquiry row before opening the modal.
+async function openConvertModal(enquiryId) {
+  const { data: enquiry, error } = await supabaseClient
+    .from("enquiries")
+    .select("*")
+    .eq("id", enquiryId)
+    .single();
+
+  if (error || !enquiry) {
+    alert("Couldn't load this enquiry: " + (error?.message || "not found"));
+    return;
+  }
+  convertingEnquiry = enquiry;
+
+  const modal = document.getElementById("convertModal");
+  const form = document.getElementById("convertForm");
+  form.reset();
+  form.elements["enquiry_id"].value = enquiry.id;
+  document.getElementById("convertCustomerLine").textContent =
+    `${enquiry.customer_name} · ${enquiry.phone}${enquiry.email ? " · " + enquiry.email : ""}`;
+
+  const facilitySelect = document.getElementById("convertFacilitySelect");
+  if (enquiry.facility_id && FACILITY_LABELS[enquiry.facility_id]) {
+    facilitySelect.value = enquiry.facility_id;
+  }
+  document.getElementById("convertDateInput").value = enquiry.preferred_date || "";
+  form.elements["guests"].value = enquiry.guests || "";
+
+  const isHallLawn = HALL_LAWN_IDS.includes(facilitySelect.value);
+  document.getElementById("convertFixedSlotFields").hidden = !isHallLawn;
+  document.getElementById("convertHourlyFields").hidden = isHallLawn;
+  document.getElementById("convertModeFieldWrap").hidden = facilitySelect.value !== "pool";
+
+  modal.hidden = false;
+}
+
+async function submitConvert(e) {
+  e.preventDefault();
+  const form = e.target;
+  const data = Object.fromEntries(new FormData(form).entries());
+  const enquiry = convertingEnquiry;
+  if (!enquiry || enquiry.id !== data.enquiry_id) return;
+
+  const isHallLawn = HALL_LAWN_IDS.includes(data.facility_id);
+  const markApproved = form.elements["mark_approved"].checked;
+
+  let paymentEntry = null;
+  if (markApproved) {
+    paymentEntry = await promptPaymentEntry({
+      allowPartial: isHallLawn,
+      label: `Approve this booking for ${enquiry.customer_name}`,
+    });
+    if (!paymentEntry) return;
+  }
+
+  const submitBtn = form.querySelector("button[type=submit]");
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Creating...";
+
+  let result, error;
+  if (isHallLawn) {
+    ({ data: result, error } = await supabaseClient.rpc("staff_create_booking_request", {
+      p_customer_name: enquiry.customer_name,
+      p_phone: enquiry.phone,
+      p_facility_id: data.facility_id,
+      p_booking_date: data.booking_date,
+      p_slot: data.slot,
+      p_email: enquiry.email || null,
+      p_guests: data.guests ? Number(data.guests) : null,
+      p_notes: enquiry.message || null,
+      p_mark_approved: markApproved,
+    }));
+  } else {
+    const isPool = data.facility_id === "pool";
+    const startTime = data.start_time;
+    const endTime = addHours(startTime, Number(data.duration || 1));
+    ({ data: result, error } = await supabaseClient.rpc("staff_create_hourly_booking", {
+      p_customer_name: enquiry.customer_name,
+      p_phone: enquiry.phone,
+      p_facility_id: data.facility_id,
+      p_booking_date: data.booking_date,
+      p_start_time: startTime,
+      p_end_time: endTime,
+      p_guests: isPool ? Number(data.guests || 1) : 1,
+      p_mode: isPool ? data.mode : null,
+      p_email: enquiry.email || null,
+      p_mark_approved: markApproved,
+    }));
+  }
+
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Create Booking";
+
+  if (error) {
+    alert(
+      error.message?.includes("duplicate key") || error.code === "23505"
+        ? "That slot is already approved for another booking on this date."
+        : error.message?.includes("Capacity exceeded") || error.message?.includes("Exclusive booking conflicts")
+        ? "Can't create — this would exceed capacity or conflicts with another approved booking. " + error.message
+        : "Couldn't create this booking: " + error.message
+    );
+    return;
+  }
+
+  const code = result?.[0]?.booking_code;
+  const table = isHallLawn ? "booking_requests" : "hourly_bookings";
+
+  const linkUpdate = { enquiry_id: enquiry.id };
+  if (markApproved && paymentEntry) {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    Object.assign(linkUpdate, {
+      total_amount: paymentEntry.total_amount,
+      amount_paid: paymentEntry.amount_paid,
+      payment_status: paymentEntry.payment_status,
+      approved_at: new Date().toISOString(),
+      approved_by: user.id,
+    });
+  }
+  const { error: linkError } = await supabaseClient.from(table).update(linkUpdate).eq("booking_code", code);
+  if (linkError) console.error("Couldn't link booking to enquiry:", linkError);
+
+  const { error: statusError } = await supabaseClient
+    .from("enquiries")
+    .update({ status: "converted", updated_at: new Date().toISOString() })
+    .eq("id", enquiry.id);
+  if (statusError) console.error("Couldn't mark enquiry converted:", statusError);
+
+  await writeAudit("convert_enquiry_to_booking", table, null, { enquiry_code: enquiry.enquiry_code, booking_code: code });
+
+  convertingEnquiry = null;
+  document.getElementById("convertModal").hidden = true;
+  alert(`Created booking ${code}.`);
   await loadFeed();
 }
 

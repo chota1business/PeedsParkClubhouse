@@ -52,7 +52,8 @@
         <button class="filter-chip" data-type="enquiry">Enquiries</button>
         <button class="filter-chip" data-type="hall_lawn_booking">Hall &amp; Lawn</button>
         <button class="filter-chip" data-type="hourly_booking">Pool &amp; Badminton</button>
-        <button class="btn btn-primary btn-sm" id="openAddBookingBtn" style="margin-left:auto;">+ Add Booking</button>
+        <button class="btn btn-outline-dark btn-sm" id="openAddEnquiryBtn" style="margin-left:auto;">+ Add Enquiry</button>
+        <button class="btn btn-primary btn-sm" id="openAddBookingBtn">+ Add Booking</button>
       </div>
 
       <div id="feedList" class="enquiry-list">
@@ -159,6 +160,118 @@
       <div class="modal-actions">
         <button type="button" class="btn btn-outline-dark" id="cancelAddBookingBtn">Cancel</button>
         <button type="submit" class="btn btn-primary">Save Booking</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add / Edit Enquiry modal -->
+<div id="enquiryModal" class="modal-backdrop" hidden>
+  <div class="modal-card">
+    <button class="modal-close" id="closeEnquiryModalBtn" aria-label="Close">&times;</button>
+    <h3 id="enquiryModalTitle">Add Enquiry</h3>
+    <form id="enquiryForm2">
+      <input type="hidden" name="id">
+      <div class="modal-row">
+        <label>Name*
+          <input type="text" name="customer_name" required minlength="2">
+        </label>
+        <label>Phone*
+          <input type="tel" name="phone" id="enquiryPhoneInput2" required inputmode="numeric" placeholder="10-digit mobile number">
+        </label>
+      </div>
+      <div class="modal-row">
+        <label>Email
+          <input type="email" name="email">
+        </label>
+        <label>Facility
+          <select name="facility_id">
+            <option value="">Not sure / multiple</option>
+            <option value="ac_hall">AC Hall</option>
+            <option value="non_ac_hall">Non-AC Hall</option>
+            <option value="lawn">Lawn</option>
+            <option value="pool">Swimming Pool</option>
+            <option value="badminton_1">Badminton Court 1</option>
+            <option value="badminton_2">Badminton Court 2</option>
+          </select>
+        </label>
+      </div>
+      <div class="modal-row">
+        <label>Preferred date
+          <input type="date" name="preferred_date">
+        </label>
+        <label>Guests
+          <input type="number" name="guests" min="1">
+        </label>
+      </div>
+      <label>Message
+        <textarea name="message" rows="2"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">Save Enquiry</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Convert to Booking modal -->
+<div id="convertModal" class="modal-backdrop" hidden>
+  <div class="modal-card">
+    <button class="modal-close" id="closeConvertModalBtn" aria-label="Close">&times;</button>
+    <h3>Convert to Booking</h3>
+    <form id="convertForm">
+      <input type="hidden" name="enquiry_id">
+      <p id="convertCustomerLine" class="muted small"></p>
+      <label>Facility*
+        <select name="facility_id" id="convertFacilitySelect" required>
+          <option value="ac_hall">AC Hall</option>
+          <option value="non_ac_hall">Non-AC Hall</option>
+          <option value="lawn">Lawn</option>
+          <option value="pool">Swimming Pool</option>
+          <option value="badminton_1">Badminton Court 1</option>
+          <option value="badminton_2">Badminton Court 2</option>
+        </select>
+      </label>
+      <label>Date*
+        <input type="date" name="booking_date" id="convertDateInput" required>
+      </label>
+      <div id="convertFixedSlotFields" class="modal-row" hidden>
+        <label>Slot*
+          <select name="slot">
+            <option value="morning">Morning (8am–2pm)</option>
+            <option value="evening">Evening (4pm–10pm)</option>
+            <option value="full_day">Full Day</option>
+          </select>
+        </label>
+      </div>
+      <div id="convertHourlyFields" class="modal-row" hidden>
+        <label>Start time*
+          <input type="time" name="start_time" value="10:00">
+        </label>
+        <label>Duration (hours)*
+          <select name="duration">
+            <option value="1">1 hour</option>
+            <option value="2">2 hours</option>
+            <option value="3">3 hours</option>
+            <option value="4">4 hours</option>
+          </select>
+        </label>
+      </div>
+      <label id="convertModeFieldWrap" hidden>Booking mode
+        <select name="mode">
+          <option value="shared">Shared</option>
+          <option value="exclusive">Exclusive</option>
+        </select>
+      </label>
+      <label>Guests
+        <input type="number" name="guests" min="1">
+      </label>
+      <label style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" name="mark_approved" style="width:auto;">
+        Approve immediately (asks for payment next)
+      </label>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">Create Booking</button>
       </div>
     </form>
   </div>
