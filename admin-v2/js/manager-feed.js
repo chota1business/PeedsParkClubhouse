@@ -176,7 +176,7 @@ function feedRowHtml(r) {
         </div>
         <div class="muted small">
           ${r.code} · ${escapeHtml(facilityLabel)} · ${whenText}
-          ${r.payment_status ? " · payment: " + r.payment_status : ""}
+          ${r.payment_status ? " · payment: " + r.payment_status + (r.total_amount != null ? ` (₹${Number(r.amount_paid).toFixed(2)} of ₹${Number(r.total_amount).toFixed(2)})` : "") : ""}
           · status: <strong>${r.status}</strong>
           · ${new Date(r.created_at).toLocaleString()}
         </div>
@@ -235,31 +235,53 @@ async function handleBookingAction(id, recordType, action) {
     return;
   }
 
-  const confirmMsgs = {
-    approve: `Approve ${row.code} for ${row.customer_name}?`,
-    reject: `Reject ${row.code}? This cannot be undone from here.`,
-  };
-  if (!confirm(confirmMsgs[action])) return;
+  if (action === "approve") {
+    const allowPartial = recordType === "hall_lawn_booking";
+    const entry = promptPaymentEntry({
+      allowPartial,
+      label: `Approve ${row.code} for ${row.customer_name}`,
+    });
+    if (!entry) return;
 
-  const statusMap = { approve: "approved", reject: "rejected" };
-  const update = { status: statusMap[action], updated_at: new Date().toISOString() };
-  const { error } = await supabaseClient.from(table).update(update).eq("id", id);
+    const update = {
+      status: "approved",
+      total_amount: entry.total_amount,
+      amount_paid: entry.amount_paid,
+      payment_status: entry.payment_status,
+      approved_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    update.approved_by = user.id;
 
-  if (error) {
-    // Same DB backstops as the dedicated Bookings/Pool&Badminton pages —
-    // the approved-slot unique index (Hall/Lawn) and check_hourly_capacity
-    // (Pool/Badminton) can both reject an approval here too.
-    alert(
-      error.message?.includes("duplicate key") || error.code === "23505"
-        ? "That slot is already approved for another booking on this date."
-        : error.message?.includes("Capacity exceeded") || error.message?.includes("Exclusive booking conflicts")
-        ? "Can't approve — this would exceed capacity or conflicts with another approved booking. " + error.message
-        : "Couldn't update this booking: " + error.message
-    );
+    const { error } = await supabaseClient.from(table).update(update).eq("id", id);
+    if (error) {
+      alert(
+        error.message?.includes("duplicate key") || error.code === "23505"
+          ? "That slot is already approved for another booking on this date."
+          : error.message?.includes("Capacity exceeded") || error.message?.includes("Exclusive booking conflicts")
+          ? "Can't approve — this would exceed capacity or conflicts with another approved booking. " + error.message
+          : "Couldn't approve this booking: " + error.message
+      );
+      return;
+    }
+
+    await writeAudit(`approve_${recordType}`, table, id, { code: row.code, total_amount: entry.total_amount, amount_paid: entry.amount_paid });
+    Object.assign(row, update);
+    renderFeed();
     return;
   }
 
-  await writeAudit(`${action}_${recordType}`, table, id, { code: row.code });
+  if (!confirm(`Reject ${row.code}? This cannot be undone from here.`)) return;
+
+  const update = { status: "rejected", updated_at: new Date().toISOString() };
+  const { error } = await supabaseClient.from(table).update(update).eq("id", id);
+  if (error) {
+    alert("Couldn't update this booking: " + error.message);
+    return;
+  }
+
+  await writeAudit(`reject_${recordType}`, table, id, { code: row.code });
   row.status = update.status;
   renderFeed();
 }
@@ -311,6 +333,19 @@ async function submitAddBooking(e) {
 
   const isHallLawn = HALL_LAWN_IDS.includes(data.facility_id);
   const markApproved = form.elements["mark_approved"].checked;
+
+  // Approving requires a payment amount, same as approving from the feed
+  // list itself — ask for it before creating the row so a phoned-in booking
+  // can't be marked approved without payment being recorded.
+  let paymentEntry = null;
+  if (markApproved) {
+    paymentEntry = promptPaymentEntry({
+      allowPartial: isHallLawn,
+      label: `Approve this booking for ${data.customer_name.trim()}`,
+    });
+    if (!paymentEntry) return; // backed out — leave the modal open, nothing saved yet
+  }
+
   const submitBtn = form.querySelector("button[type=submit]");
   submitBtn.disabled = true;
   submitBtn.textContent = "Saving...";
@@ -361,11 +396,31 @@ async function submitAddBooking(e) {
   }
 
   const code = result?.[0]?.booking_code;
+  const table = isHallLawn ? "booking_requests" : "hourly_bookings";
+
+  if (markApproved && paymentEntry) {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const { error: payError } = await supabaseClient
+      .from(table)
+      .update({
+        total_amount: paymentEntry.total_amount,
+        amount_paid: paymentEntry.amount_paid,
+        payment_status: paymentEntry.payment_status,
+        approved_at: new Date().toISOString(),
+        approved_by: user.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("booking_code", code);
+    if (payError) {
+      alert(`Saved as ${code}, but couldn't record the payment: ${payError.message}. Use Update Payment on it from the feed.`);
+    }
+  }
+
   await writeAudit(
     isHallLawn ? "staff_create_booking_request" : "staff_create_hourly_booking",
-    isHallLawn ? "booking_requests" : "hourly_bookings",
+    table,
     null,
-    { code, facility_id: data.facility_id, phoned_in: true }
+    { code, facility_id: data.facility_id, phoned_in: true, ...(paymentEntry ? { total_amount: paymentEntry.total_amount, amount_paid: paymentEntry.amount_paid } : {}) }
   );
 
   document.getElementById("addBookingModal").hidden = true;
@@ -390,7 +445,14 @@ function wireExpensesControls() {
 
 function wireAddExpenseModal() {
   const modal = document.getElementById("addExpenseModal");
-  document.getElementById("openAddExpenseBtn").addEventListener("click", () => { modal.hidden = false; });
+  document.getElementById("openAddExpenseBtn").addEventListener("click", () => {
+    document.getElementById("addExpenseForm").reset();
+    document.getElementById("addExpenseForm").elements["id"].value = "";
+    document.getElementById("expenseModalTitle").textContent = "Log an expense";
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById("expenseDateInput").value = today;
+    modal.hidden = false;
+  });
   document.getElementById("closeAddExpenseBtn").addEventListener("click", () => { modal.hidden = true; });
   document.getElementById("cancelAddExpenseBtn").addEventListener("click", () => { modal.hidden = true; });
   document.getElementById("addExpenseForm").addEventListener("submit", submitAddExpense);
@@ -436,6 +498,24 @@ function renderExpenses() {
   }
 
   container.innerHTML = rows.map(expenseRowHtml).join("");
+  container.querySelectorAll("[data-edit-expense]").forEach((btn) => {
+    btn.addEventListener("click", () => openEditExpenseModal(allExpenses.find((x) => x.id === btn.dataset.editExpense)));
+  });
+}
+
+function openEditExpenseModal(expense) {
+  if (!expense) return;
+  const modal = document.getElementById("addExpenseModal");
+  const form = document.getElementById("addExpenseForm");
+  document.getElementById("expenseModalTitle").textContent = "Edit expense";
+  form.elements["id"].value = expense.id;
+  form.elements["expense_date"].value = expense.expense_date;
+  form.elements["amount"].value = expense.amount;
+  form.elements["category"].value = expense.category;
+  form.elements["facility_id"].value = expense.facility_id || "";
+  form.elements["description"].value = expense.description;
+  form.elements["paid_by"].value = expense.paid_by || "";
+  modal.hidden = false;
 }
 
 function expenseRowHtml(x) {
@@ -452,6 +532,9 @@ function expenseRowHtml(x) {
         </div>
         <p class="enquiry-message">${escapeHtml(x.description)}</p>
       </div>
+      <div class="enquiry-card-actions">
+        <button class="btn btn-outline-dark btn-sm" data-edit-expense="${x.id}">✏️ Edit</button>
+      </div>
     </div>`;
 }
 
@@ -460,27 +543,37 @@ async function submitAddExpense(e) {
   const form = e.target;
   const data = Object.fromEntries(new FormData(form).entries());
 
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  const { data: inserted, error } = await supabaseClient
-    .from("expenses")
-    .insert({
-      expense_date: data.expense_date,
-      category: data.category,
-      facility_id: data.facility_id || null,
-      description: data.description.trim(),
-      amount: Number(data.amount),
-      paid_by: data.paid_by?.trim() || null,
-      created_by: user.id,
-    })
-    .select()
-    .single();
+  const fields = {
+    expense_date: data.expense_date,
+    category: data.category,
+    facility_id: data.facility_id || null,
+    description: data.description.trim(),
+    amount: Number(data.amount),
+    paid_by: data.paid_by?.trim() || null,
+  };
 
-  if (error) {
-    alert("Couldn't save this expense: " + error.message);
-    return;
+  if (data.id) {
+    const { error } = await supabaseClient.from("expenses").update({ ...fields, updated_at: new Date().toISOString() }).eq("id", data.id);
+    if (error) {
+      alert("Couldn't save changes: " + error.message);
+      return;
+    }
+    await writeAudit("edit_expense", "expenses", data.id, { category: data.category, amount: data.amount });
+  } else {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const { data: inserted, error } = await supabaseClient
+      .from("expenses")
+      .insert({ ...fields, created_by: user.id })
+      .select()
+      .single();
+
+    if (error) {
+      alert("Couldn't save this expense: " + error.message);
+      return;
+    }
+    await writeAudit("log_expense", "expenses", inserted.id, { category: data.category, amount: data.amount });
   }
 
-  await writeAudit("log_expense", "expenses", inserted.id, { category: data.category, amount: data.amount });
   document.getElementById("addExpenseModal").hidden = true;
   form.reset();
   const today = new Date().toISOString().slice(0, 10);

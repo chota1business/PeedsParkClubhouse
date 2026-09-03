@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics — PeedsPark Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/manager-feed.css">
+<link rel="stylesheet" href="css/analytics.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="container admin-header-inner">
+    <a href="dashboard.html" class="logo">Peeds<span>Park</span> <span class="admin-tag">Admin</span></a>
+    <div class="admin-user">
+      <span id="staffName">Loading…</span>
+      <span id="staffRole" class="role-badge"></span>
+      <button id="logoutBtn" class="btn btn-outline-dark">Log Out</button>
+    </div>
+  </div>
+</header>
+
+<main class="container admin-main">
+  <div id="notAuthorised" hidden class="policy-card" style="border-left:6px solid var(--coral); max-width:520px; margin:60px auto;">
+    <h3>Not authorised</h3>
+    <p>This account isn't set up as PeedsPark staff.</p>
+    <a class="btn btn-primary" href="index.html">Back to login</a>
+  </div>
+
+  <div id="pageContent" hidden>
+    <div class="page-head">
+      <a href="dashboard.html" class="back-link">&larr; Dashboard</a>
+      <h2>📊 Analytics</h2>
+    </div>
+
+    <div class="filter-row">
+      <button class="filter-chip active" data-range="7">Last 7 days</button>
+      <button class="filter-chip" data-range="30">Last 30 days</button>
+      <button class="filter-chip" data-range="month">This month</button>
+      <button class="filter-chip" data-range="90">Last 90 days</button>
+    </div>
+    <form id="customRangeForm" class="custom-range-row">
+      <label>From <input type="date" name="start"></label>
+      <label>To <input type="date" name="end"></label>
+      <button type="submit" class="btn btn-outline-dark btn-sm">Apply custom range</button>
+    </form>
+    <p id="rangeLabel" class="muted small" style="margin:-8px 0 20px;"></p>
+
+    <div id="loadingNote" class="muted center" style="padding:30px;">Loading analytics…</div>
+
+    <div id="statsContent" hidden>
+      <!-- Top stat tiles -->
+      <div class="stat-grid">
+        <div class="stat-card stat-coral">
+          <span class="stat-label">Cash Inflow</span>
+          <strong id="statCashInflow">₹0</strong>
+          <span class="stat-sub">payments recorded at approval, this period</span>
+        </div>
+        <div class="stat-card stat-teal">
+          <span class="stat-label">Total Revenue</span>
+          <strong id="statRevenueTotal">₹0</strong>
+          <span class="stat-sub">across all facilities, this period</span>
+        </div>
+        <div class="stat-card stat-gold">
+          <span class="stat-label">Enquiries</span>
+          <strong id="statEnquiryCount">0</strong>
+          <span class="stat-sub">received this period</span>
+        </div>
+        <div class="stat-card stat-plum">
+          <span class="stat-label">Bookings</span>
+          <strong id="statBookingCount">0</strong>
+          <span class="stat-sub">requested this period</span>
+        </div>
+      </div>
+
+      <!-- Revenue by facility -->
+      <section class="analytics-section">
+        <h3>💰 Revenue by Facility</h3>
+        <div id="revenueBars" class="bar-list"></div>
+      </section>
+
+      <!-- Occupancy -->
+      <section class="analytics-section">
+        <h3>📅 Occupancy</h3>
+        <p class="muted small" style="margin-top:-8px;">Hall/Lawn: share of morning/evening slot-halves booked. Pool: guest-hours booked vs. capacity. Badminton: hours booked vs. open hours, per court.</p>
+        <div id="occupancyBars" class="bar-list"></div>
+      </section>
+
+      <!-- Enquiry funnel -->
+      <section class="analytics-section">
+        <h3>🔄 Enquiry Funnel</h3>
+        <div id="funnelBars" class="funnel-row"></div>
+      </section>
+
+      <!-- Status snapshot -->
+      <section class="analytics-section">
+        <h3>📌 Booking Status Snapshot</h3>
+        <div id="statusChips" class="status-chip-row"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../js/supabase-client.js"></script>
+<script src="js/admin-auth.js"></script>
+<script src="js/analytics.js"></script>
+</body>
+</html>

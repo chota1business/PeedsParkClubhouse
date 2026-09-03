@@ -26,6 +26,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   document.getElementById("blockForm").addEventListener("submit", createBlock);
+  wireEditBookingModal();
+  // Blocking a facility for maintenance is Admin-only (DB-enforced via RLS
+  // too) — Managers can still see existing blocks below, just not create or
+  // remove them.
+  if (staff.role !== "admin") {
+    document.getElementById("blockForm").hidden = true;
+    document.getElementById("blockAdminNote")?.removeAttribute("hidden");
+  }
 
   await Promise.all([loadBookings(), loadBlocks()]);
 });
@@ -69,16 +77,12 @@ function bookingRowHtml(b) {
   }
   if (b.status === "approved") {
     actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="cancel">🚫 Cancel</button>`);
-    // Partial (50% advance) only applies to Hall/Lawn bookings — DB-enforced
-    // too (booking_requests_partial_only_hall_lawn_check), this just keeps
-    // the button from appearing where it would be rejected anyway.
-    const partialEligible = ["ac_hall", "non_ac_hall", "lawn"].includes(b.facility_id);
-    if (partialEligible && b.payment_status === "unpaid") {
-      actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="partial">🌗 Mark Partial (50%)</button>`);
-    }
     if (b.payment_status !== "received") {
-      actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="paid">💰 Mark Paid</button>`);
+      actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="update_payment">💰 Update Payment</button>`);
     }
+  }
+  if (b.status === "pending" || b.status === "approved") {
+    actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="edit">✏️ Edit</button>`);
   }
   // Refund only makes sense once cancelled, and only if money had actually
   // changed hands (payment_status partial/received) — DB-enforced too
@@ -104,7 +108,7 @@ function bookingRowHtml(b) {
         <div class="muted small">
           ${b.booking_code} · ${FACILITY_LABELS[b.facility_id] || b.facility_id} · ${b.booking_date} · ${b.slot}
           ${b.guests ? " · " + b.guests + " guests" : ""}
-          · payment: ${b.payment_status}
+          · payment: ${b.payment_status}${b.total_amount != null ? ` (₹${Number(b.amount_paid).toFixed(2)} of ₹${Number(b.total_amount).toFixed(2)})` : ""}
           · status: <strong>${b.status}</strong>
         </div>
         ${cancelInfo}
@@ -123,41 +127,94 @@ async function handleBookingAction(id, action) {
 
   if (action === "cancel") return cancelBooking(booking);
   if (action === "refund") return recordRefund(booking);
+  if (action === "approve") return approveWithPayment(booking);
+  if (action === "update_payment") return updatePayment(booking);
+  if (action === "edit") return openEditBookingModal(booking);
 
   const confirmMsgs = {
-    approve: `Approve booking ${booking.booking_code} for ${booking.customer_name}?`,
     reject: `Reject booking ${booking.booking_code}? This cannot be undone from here.`,
-    paid: `Mark ${booking.booking_code} as payment received (in full)?`,
-    partial: `Mark ${booking.booking_code} as partially paid (50% advance received)?`,
   };
   if (!confirm(confirmMsgs[action])) return;
 
-  const statusMap = { approve: "approved", reject: "rejected" };
-  const paymentMap = { paid: "received", partial: "partial" };
-  const update = action in paymentMap
-    ? { payment_status: paymentMap[action], updated_at: new Date().toISOString() }
-    : { status: statusMap[action], updated_at: new Date().toISOString() };
-
+  const update = { status: "rejected", updated_at: new Date().toISOString() };
   const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", id);
+  if (error) {
+    alert("Couldn't update this booking: " + error.message);
+    return;
+  }
 
+  await writeAudit("reject_booking", "booking_requests", id, { booking_code: booking.booking_code });
+  Object.assign(booking, update);
+  renderBookings();
+}
+
+// Hall/Lawn/AC/Non-AC allow a Partial (advance) payment — every facility on
+// this page does, since Pool/Badminton live on the separate hourly-bookings
+// page. Approval can't complete until an amount is entered, per owner
+// request: no booking gets confirmed to the customer without payment being
+// recorded first.
+async function approveWithPayment(booking) {
+  const entry = promptPaymentEntry({
+    allowPartial: true,
+    label: `Approve ${booking.booking_code} for ${booking.customer_name}`,
+  });
+  if (!entry) return;
+
+  const update = {
+    status: "approved",
+    total_amount: entry.total_amount,
+    amount_paid: entry.amount_paid,
+    payment_status: entry.payment_status,
+    approved_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  update.approved_by = user.id;
+
+  const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", booking.id);
   if (error) {
     // The approved-slot unique index (one facility/date/slot can only have one
     // approved booking) surfaces here as a constraint violation if two pending
-    // requests target the same slot and both get approved. The
-    // booking_requests_partial_only_hall_lawn_check constraint would also
-    // surface here if "partial" is ever attempted on a non-Hall/Lawn facility
-    // (shouldn't happen — the button is hidden for those — but the DB is the
-    // real backstop).
+    // requests target the same slot and both get approved.
     alert(
       error.message?.includes("duplicate key") || error.code === "23505"
         ? "That slot is already approved for another booking on this date."
-        : "Couldn't update this booking: " + error.message
+        : "Couldn't approve this booking: " + error.message
     );
     return;
   }
 
-  const auditActionMap = { paid: "mark_payment_received", partial: "mark_payment_partial" };
-  await writeAudit(auditActionMap[action] || `${action}_booking`, "booking_requests", id, { booking_code: booking.booking_code });
+  await writeAudit("approve_booking", "booking_requests", booking.id, {
+    booking_code: booking.booking_code, total_amount: entry.total_amount, amount_paid: entry.amount_paid,
+  });
+  Object.assign(booking, update);
+  renderBookings();
+}
+
+async function updatePayment(booking) {
+  const entry = promptPaymentEntry({
+    allowPartial: true,
+    previousTotal: booking.total_amount,
+    previousPaid: booking.amount_paid,
+    label: `Update payment for ${booking.booking_code}`,
+  });
+  if (!entry) return;
+
+  const update = {
+    total_amount: entry.total_amount,
+    amount_paid: entry.amount_paid,
+    payment_status: entry.payment_status,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", booking.id);
+  if (error) {
+    alert("Couldn't update payment: " + error.message);
+    return;
+  }
+
+  await writeAudit("update_payment", "booking_requests", booking.id, {
+    booking_code: booking.booking_code, total_amount: entry.total_amount, amount_paid: entry.amount_paid,
+  });
   Object.assign(booking, update);
   renderBookings();
 }
@@ -250,7 +307,7 @@ async function loadBlocks() {
         <div class="muted small">${new Date(b.start_at).toLocaleString()} → ${new Date(b.end_at).toLocaleString()} ${b.reason ? "· " + escapeHtml(b.reason) : ""}</div>
       </div>
       <div class="enquiry-card-actions">
-        <button class="btn btn-outline-dark btn-sm" data-unblock="${b.id}">Unblock</button>
+        ${staff.role === "admin" ? `<button class="btn btn-outline-dark btn-sm" data-unblock="${b.id}">Unblock</button>` : ""}
       </div>
     </div>`).join("");
 
@@ -302,6 +359,66 @@ async function removeBlock(id) {
   }
   await writeAudit("remove_block", "blocks", id, {});
   await loadBlocks();
+}
+
+// ---------- Edit Booking modal ----------
+
+function wireEditBookingModal() {
+  const modal = document.getElementById("editBookingModal");
+  document.getElementById("closeEditBookingBtn").addEventListener("click", () => { modal.hidden = true; });
+  document.getElementById("editBookingForm").addEventListener("submit", submitEditBooking);
+}
+
+function openEditBookingModal(booking) {
+  const modal = document.getElementById("editBookingModal");
+  const form = document.getElementById("editBookingForm");
+  form.elements["id"].value = booking.id;
+  form.elements["customer_name"].value = booking.customer_name;
+  form.elements["phone"].value = booking.phone;
+  form.elements["booking_date"].value = booking.booking_date;
+  form.elements["slot"].value = booking.slot;
+  form.elements["guests"].value = booking.guests || "";
+  form.elements["notes"].value = booking.notes || "";
+  modal.hidden = false;
+}
+
+async function submitEditBooking(e) {
+  e.preventDefault();
+  const form = e.target;
+  const data = Object.fromEntries(new FormData(form).entries());
+
+  if (!/^[0-9]{10}$/.test(data.phone)) {
+    alert("Please enter a valid 10-digit mobile number.");
+    return;
+  }
+
+  const update = {
+    customer_name: data.customer_name.trim(),
+    phone: data.phone.trim(),
+    booking_date: data.booking_date,
+    slot: data.slot,
+    guests: data.guests ? Number(data.guests) : null,
+    notes: data.notes?.trim() || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", data.id);
+  if (error) {
+    // Same approved-slot unique index applies here if the new date/slot
+    // collides with another approved booking.
+    alert(
+      error.message?.includes("duplicate key") || error.code === "23505"
+        ? "That slot is already approved for another booking on this date."
+        : "Couldn't save changes: " + error.message
+    );
+    return;
+  }
+
+  await writeAudit("edit_booking", "booking_requests", data.id, { booking_date: data.booking_date, slot: data.slot });
+  const booking = allBookings.find(b => b.id === data.id);
+  if (booking) Object.assign(booking, update);
+  document.getElementById("editBookingModal").hidden = true;
+  renderBookings();
 }
 
 async function writeAudit(action, table, recordId, details) {

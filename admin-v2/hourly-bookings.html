@@ -6,6 +6,7 @@
 <title>Pool &amp; Badminton Bookings — PeedsPark Admin</title>
 <link rel="stylesheet" href="../css/style.css">
 <link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/manager-feed.css">
 </head>
 <body class="admin-body">
 
@@ -15,7 +16,6 @@
     <div class="admin-user">
       <span id="staffName">Loading…</span>
       <span id="staffRole" class="role-badge"></span>
-      <button id="changePasswordBtn" class="btn btn-outline-dark">Change Password</button>
       <button id="logoutBtn" class="btn btn-outline-dark">Log Out</button>
     </div>
   </div>
@@ -52,6 +52,36 @@
     <div id="bookingList" class="enquiry-list">
       <p class="muted center" style="padding:40px;">Loading bookings…</p>
     </div>
+
+    <div class="page-head" style="margin-top:44px;">
+      <h2>🚫 Block for Maintenance</h2>
+    </div>
+    <form id="blockForm" class="panel-form">
+      <div class="form-row">
+        <label>Facility*
+          <select name="facility_id" required>
+            <option value="pool">Swimming Pool</option>
+            <option value="badminton_1">Badminton Court 1</option>
+            <option value="badminton_2">Badminton Court 2</option>
+          </select>
+        </label>
+        <label>Reason
+          <input type="text" name="reason" placeholder="Maintenance, cleaning...">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>From*
+          <input type="datetime-local" name="start_at" required>
+        </label>
+        <label>To*
+          <input type="datetime-local" name="end_at" required>
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary">Add Block</button>
+    </form>
+    <p id="blockAdminNote" class="muted small" hidden>Blocking a facility for maintenance is an Admin-only action — ask an Admin to add or remove one.</p>
+
+    <div id="blockList" class="enquiry-list" style="margin-top:16px;"></div>
 
     <div class="page-head" style="margin-top:44px;">
       <h2>🏸 Members-Reserved Hours</h2>
@@ -92,6 +122,56 @@
     </form>
 
     <div id="unblockList" class="enquiry-list" style="margin-top:16px;"></div>
+  </div>
+
+  <!-- Edit Booking modal (date/time/guests/mode — not payment or status) -->
+  <div id="editBookingModal" class="modal-backdrop" hidden>
+    <div class="modal-card">
+      <button class="modal-close" id="closeEditBookingBtn" aria-label="Close">&times;</button>
+      <h3>Edit Booking</h3>
+      <form id="editBookingForm">
+        <input type="hidden" name="id">
+        <input type="hidden" name="facility_id">
+        <div class="modal-row">
+          <label>Name*
+            <input type="text" name="customer_name" required minlength="2">
+          </label>
+          <label>Phone*
+            <input type="tel" name="phone" required inputmode="numeric">
+          </label>
+        </div>
+        <div class="modal-row">
+          <label>Date*
+            <input type="date" name="booking_date" required>
+          </label>
+          <label>Start time*
+            <input type="time" name="start_time" required>
+          </label>
+        </div>
+        <div class="modal-row">
+          <label>Duration (hours)*
+            <select name="duration">
+              <option value="1">1 hour</option>
+              <option value="2">2 hours</option>
+              <option value="3">3 hours</option>
+              <option value="4">4 hours</option>
+            </select>
+          </label>
+          <label>Guests
+            <input type="number" name="guests" min="1">
+          </label>
+        </div>
+        <label id="editModeFieldWrap">Booking mode
+          <select name="mode">
+            <option value="Shared">Shared</option>
+            <option value="Exclusive">Exclusive</option>
+          </select>
+        </label>
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
   </div>
 </main>
 

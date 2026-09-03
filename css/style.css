@@ -42,12 +42,15 @@ img { max-width: 100%; display: block; }
 a { color: var(--teal-dark); text-decoration: none; }
 h1, h2, h3 { line-height: 1.15; margin: 0 0 0.5em; color: var(--navy); }
 h1, h2 { font-family: var(--font-heading); font-weight: 700; }
+h2 { color: var(--teal-dark); } /* all h2 -> dark blue, sitewide — user request */
 h2 { font-size: clamp(2rem, 4vw, 3rem); }
 h3 { font-size: 1.25rem; }
 .container { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
 .center { text-align: center; }
 .muted { color: var(--muted); }
 .small { font-size: 0.85rem; }
+.section-heading{margin-bottom:36px}
+.intro h2,.section-heading h2,.contact-section h2,.enquiry-section h2{font-size:clamp(32px,4vw,48px)}
 
 .eyebrow { color: var(--coral-dark);rm .g  font-weight: 700; letter-spacing: 0.19em; text-transform: uppercase; font-size: 0.8rem; margin-bottom: 8px; }
 .eyebrow.dark{color:#4f83b6}
@@ -197,10 +200,10 @@ a.facility-card { display: block; transition: transform 0.15s ease, box-shadow 0
 /* Amenities — separate, smaller-emphasis row below the 3 main facility
    cards (ported from the old site's "More at PeedsPark" section, which
    deliberately keeps parking/coaching out of the main Facilities cards). */
-.amenities { padding: 8px 0 56px; background: var(--white); }
+.amenities { padding: 8px 0 56px; background: #DCECF7; } /* light blue, matching the site's Facilities/#DCECF7 tint — user request */
 .amenities-grid { display: grid; gap: 18px; grid-template-columns: 1fr; max-width: 760px; margin: 24px auto 0; }
 @media (min-width: 640px) { .amenities-grid { grid-template-columns: 1fr 1fr; } }
-.amenity-card { background: var(--cream); border: 2px solid #EFE6D6; border-radius: var(--radius); padding: 22px; text-align: center; }
+.amenity-card { background: var(--white); border: 2px solid #EFE6D6; border-radius: var(--radius); padding: 22px; text-align: center; }
 .amenity-card .facility-icon { display: block; margin-bottom: 10px; }
 .amenity-card h3 { margin: 0 0 6px; font-size: 1.1rem; }
 .amenity-card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
@@ -295,4 +298,7 @@ footer{background:#315f88;color:#ffffff;padding:25px 0}
 .contact-mini { display: flex; flex-direction: column; gap: 6px; margin-top: 20px; font-weight: 700; }
 .contact-mini a { color: var(--navy); }
 .intro{background:#ffffff;padding:70px 0}
+.dark-section{background:#dcecf7;color:#ffffff;padding:80px 0}
+.dark-section { background: var(--white); } /* "Perfect for" section on index.html — user request */
+
 .intro-grid{display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:center}

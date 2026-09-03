@@ -6,6 +6,7 @@
 <title>Hall &amp; Lawn Bookings — PeedsPark Admin</title>
 <link rel="stylesheet" href="../css/style.css">
 <link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/manager-feed.css">
 </head>
 <body class="admin-body">
 
@@ -15,7 +16,6 @@
     <div class="admin-user">
       <span id="staffName">Loading…</span>
       <span id="staffRole" class="role-badge"></span>
-      <button id="changePasswordBtn" class="btn btn-outline-dark">Change Password</button>
       <button id="logoutBtn" class="btn btn-outline-dark">Log Out</button>
     </div>
   </div>
@@ -72,8 +72,49 @@
       </div>
       <button type="submit" class="btn btn-primary">Add Block</button>
     </form>
+    <p id="blockAdminNote" class="muted small" hidden>Blocking a facility for maintenance is an Admin-only action — ask an Admin to add or remove one.</p>
 
     <div id="blockList" class="enquiry-list" style="margin-top:16px;"></div>
+  </div>
+
+  <!-- Edit Booking modal (date/slot/guests/notes — not payment or status) -->
+  <div id="editBookingModal" class="modal-backdrop" hidden>
+    <div class="modal-card">
+      <button class="modal-close" id="closeEditBookingBtn" aria-label="Close">&times;</button>
+      <h3>Edit Booking</h3>
+      <form id="editBookingForm">
+        <input type="hidden" name="id">
+        <div class="modal-row">
+          <label>Name*
+            <input type="text" name="customer_name" required minlength="2">
+          </label>
+          <label>Phone*
+            <input type="tel" name="phone" required inputmode="numeric">
+          </label>
+        </div>
+        <div class="modal-row">
+          <label>Date*
+            <input type="date" name="booking_date" required>
+          </label>
+          <label>Slot*
+            <select name="slot" required>
+              <option value="morning">Morning (8am–2pm)</option>
+              <option value="evening">Evening (4pm–10pm)</option>
+              <option value="full_day">Full Day</option>
+            </select>
+          </label>
+        </div>
+        <label>Guests
+          <input type="number" name="guests" min="1">
+        </label>
+        <label>Notes
+          <textarea name="notes" rows="2"></textarea>
+        </label>
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
   </div>
 </main>
 

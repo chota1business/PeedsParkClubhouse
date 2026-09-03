@@ -165,8 +165,9 @@
 <div id="addExpenseModal" class="modal-backdrop" hidden>
   <div class="modal-card">
     <button class="modal-close" id="closeAddExpenseBtn" aria-label="Close">&times;</button>
-    <h3>Log an expense</h3>
+    <h3 id="expenseModalTitle">Log an expense</h3>
     <form id="addExpenseForm">
+      <input type="hidden" name="id">
       <div class="modal-row">
         <label>Date
           <input type="date" name="expense_date" id="expenseDateInput" required>
