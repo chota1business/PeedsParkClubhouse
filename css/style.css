@@ -49,8 +49,8 @@ h3 { font-size: 1.25rem; }
 .muted { color: var(--muted); }
 .small { font-size: 0.85rem; }
 
-.eyebrow { color: var(--coral-dark); font-weight: 700; letter-spacing: 0.19em; text-transform: uppercase; font-size: 0.8rem; margin-bottom: 8px; }
-
+.eyebrow { color: var(--coral-dark);rm .g  font-weight: 700; letter-spacing: 0.19em; text-transform: uppercase; font-size: 0.8rem; margin-bottom: 8px; }
+.eyebrow.dark{color:#4f83b6}
 /* Buttons */
 .btn {
   display: inline-block;
@@ -232,11 +232,11 @@ a.facility-card { display: block; transition: transform 0.15s ease, box-shadow 0
    after a slot is picked) an inline mini booking form, ported from the
    old site's single-page-per-facility structure. */
 .slot-picker-form { max-width: 640px; margin: 24px auto 0; background: var(--white); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
-.booking-details-wrap {
-  max-width: 640px; margin: 18px auto 0; background: var(--cream); border: 2px solid #EFE6D6;
-  border-radius: var(--radius); padding: 20px;
-}
-.booking-details-wrap .slot-label { font-weight: 700; color: var(--navy); margin: 0 0 14px; }
+/* Layout-only wrapper — the actual card look now comes from .panel-form on
+   #pageBookingForm itself, so this matches the Quick Enquiry form's single
+   white-card appearance instead of nesting a second card around it. */
+.booking-details-wrap { max-width: 640px; margin: 18px auto 0; }
+.booking-details-wrap .slot-label { max-width: 640px; margin: 0 auto 10px; font-weight: 700; color: var(--navy); }
 .booking-details-wrap .change-slot-link { display: inline-block; margin-top: 4px; font-size: 0.85rem; font-weight: 600; color: var(--teal-dark); }
 
 /* Booking / Enquiry forms — soft blue-lilac tint on the Enquiry section,
@@ -272,11 +272,11 @@ a.facility-card { display: block; transition: transform 0.15s ease, box-shadow 0
 .policy-card { background: var(--white); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
 
 /* Footer */
-.site-footer { background: var(--navy); color: var(--white); padding: 40px 0 20px; margin-top: 20px; }
-.footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 24px; }
-.footer-logo { font-size: 1.3rem; }
-.site-footer a { color: var(--coral); }
-.footer-tagline { text-align: center; margin-top: 30px; opacity: 0.8; font-weight: 600; letter-spacing: 0.05em; }
+footer{background:#315f88;color:#ffffff;padding:25px 0}
+.footer-inner{display:flex;justify-content:space-between;gap:20px;font-size:13px}
+.footer-inner span{color:#6e8798}
+.footer-link{color:#ffffff;text-decoration:underline;opacity:.85}
+.footer-link:hover{opacity:1}
 
 /* WhatsApp floating button */
 .whatsapp-float {
@@ -294,3 +294,5 @@ a.facility-card { display: block; transition: transform 0.15s ease, box-shadow 0
 @media (min-width: 860px) { .enquiry-grid { grid-template-columns: 0.9fr 1.1fr; } }
 .contact-mini { display: flex; flex-direction: column; gap: 6px; margin-top: 20px; font-weight: 700; }
 .contact-mini a { color: var(--navy); }
+.intro{background:#ffffff;padding:70px 0}
+.intro-grid{display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:center}
