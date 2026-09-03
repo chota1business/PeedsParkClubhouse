@@ -22,6 +22,17 @@ const MIN_FILL_TIME_MS = 3000;
 
 const FIXED_SLOT_KEYS = ["morning", "evening", "full_day"];
 
+// End times for the fixed Hall/Lawn slots, matching get_facility_slots()'s
+// hardcoded windows (Morning 8am-2pm, Evening 4pm-10pm). Full Day is treated
+// as over once Evening ends, since that's the later of the two windows it
+// covers — once it's past 10pm there's no meaningful "rest of the day" left
+// to book, for any of the three.
+const FIXED_SLOT_END_TIMES = {
+  morning: "14:00",
+  evening: "22:00",
+  full_day: "22:00",
+};
+
 let selectedSlot = null; // { facility, date, type: 'fixed'|'hourly', slotKey?, start?, remaining?, capacity? }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -122,6 +133,20 @@ function isPastSlot(dateStr, startTime) {
   return h * 60 + m <= now.getHours() * 60 + now.getMinutes();
 }
 
+// Same idea for the fixed Hall/Lawn slots (Morning/Evening/Full Day), but
+// keyed off each slot's END time rather than its start — these are whole
+// multi-hour windows, not hourly increments, so a slot only stops being
+// bookable once it's fully over, not the moment it begins.
+function isPastFixedSlot(dateStr, slotKey) {
+  const todayStr = new Date().toISOString().split("T")[0];
+  if (dateStr !== todayStr) return false;
+  const endTime = FIXED_SLOT_END_TIMES[slotKey];
+  if (!endTime) return false;
+  const [h, m] = endTime.split(":").map(Number);
+  const now = new Date();
+  return h * 60 + m <= now.getHours() * 60 + now.getMinutes();
+}
+
 function slotBadgeHtml(status) {
   return `<span style="${statusBadgeStyle(status)}padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;">${status}</span>`;
 }
@@ -173,7 +198,12 @@ async function refreshSlotPicker(config) {
   resultBox.className = "availability-result";
 
   if (data.type === "fixed") {
-    const slotsList = FIXED_SLOT_KEYS.map((key) => ({ key, ...data.slots[key] }));
+    const slotsList = FIXED_SLOT_KEYS.map((key) => {
+      const slot = { key, ...data.slots[key] };
+      return slot.status === "Available" && isPastFixedSlot(date, key)
+        ? { ...slot, status: "Past" }
+        : slot;
+    });
     const rows = slotsList.map((slot, i) => slotRowHtml(slot.label, slot.status, i)).join("");
     resultBox.innerHTML = `<div>${rows}</div><p class="form-note" style="margin-top:10px;">Pick an open slot above to request a booking.</p>`;
     wireSlotButtons(resultBox, (index) => {
