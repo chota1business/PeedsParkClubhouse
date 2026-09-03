@@ -52,7 +52,7 @@ h3 { font-size: 1.25rem; }
 .section-heading{margin-bottom:36px}
 .intro h2,.section-heading h2,.contact-section h2,.enquiry-section h2{font-size:clamp(32px,4vw,48px)}
 
-.eyebrow { color: var(--coral-dark);rm .g  font-weight: 700; letter-spacing: 0.19em; text-transform: uppercase; font-size: 0.8rem; margin-bottom: 8px; }
+.eyebrow { color: var(--coral-dark); font-weight: 700; letter-spacing: 0.19em; text-transform: uppercase; font-size: 0.8rem; margin-bottom: 8px; }
 .eyebrow.dark{color:#4f83b6}
 /* Buttons */
 .btn {
@@ -67,6 +67,8 @@ h3 { font-size: 1.25rem; }
 .btn:active { transform: scale(0.97); }
 .btn-primary { background: var(--coral); color: #171717; }
 .btn-primary:hover { background: var(--coral-dark); color: #171717; }
+.btn-blue { background: var(--teal); color: var(--white); }
+.btn-blue:hover { background: var(--teal-dark); color: var(--white); }
 .btn-outline { background: transparent; border-color: var(--white); color: var(--white); }
 .btn-lg { padding: 16px 30px; font-size: 1.05rem; }
 .btn-sm { padding: 8px 16px; font-size: 0.85rem; }
@@ -322,6 +324,33 @@ footer{background:#315f88;color:#ffffff;padding:25px 0}
 @media (min-width: 860px) { .enquiry-grid { grid-template-columns: 0.9fr 1.1fr; } }
 .contact-mini { display: flex; flex-direction: column; gap: 6px; margin-top: 20px; font-weight: 700; }
 .contact-mini a { color: var(--navy); }
+
+/* Check Availability & Book (facility pages) — adapted from the old site's
+   layout: wording on the left, the availability/booking flow in a white
+   card on the right, on the old site's medium-blue band. Reuses
+   .enquiry-grid/.contact-mini from the homepage's Quick Enquiry section for
+   the column split, so only the section-specific colours are added here. */
+.enquire.enquire-split { background: var(--teal); }
+.enquire-split .eyebrow { color: var(--navy); }
+.enquire-split .enquiry-grid > div:first-child > p { color: var(--navy); }
+.enquire-split .contact-mini a { color: var(--white); }
+.enquire-split .form-card {
+  background: var(--white); border-radius: var(--radius); padding: 28px;
+  box-shadow: 0 20px 50px rgba(49, 95, 136, 0.15);
+}
+/* The .form-card is roughly half the section's width, well under the
+   860px viewport breakpoint that normally splits .availability-grid into
+   two side-by-side columns — without this override that split still fires
+   off the viewport width (not the card's actual, much narrower, width),
+   squeezing the date picker and booking form into two cramped columns.
+   Stack them instead, and drop the date-picker form's own card look
+   (background/shadow/padding) since the white .form-card already provides
+   it — otherwise it reads as a card nested inside a card. */
+.enquire-split .availability-grid { grid-template-columns: 1fr; margin-top: 0; }
+.enquire-split .form-card #pageAvailabilityForm.panel-form {
+  max-width: none; margin: 0; background: transparent; box-shadow: none; padding: 0;
+}
+
 .intro{background:#ffffff;padding:70px 0}
 .dark-section{background:#dcecf7;color:#ffffff;padding:80px 0}
 .dark-section { background: var(--white); } /* "Perfect for" section on index.html — user request */

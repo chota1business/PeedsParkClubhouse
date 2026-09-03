@@ -48,36 +48,35 @@
     <p >Enjoy the air-conditioned indoor hall for weddings, receptions and larger celebrations. Morning, evening or full-day slots.</p>
   </div>
 </section>
-<section class="enquire" id="availability">
+<section class="enquire enquire-split" id="availability">
   <div class="container">
-    <h2 class="center">Check Availability &amp; Book</h2>
-    <p class="center muted">Pick a date to see open slots, then request to book directly — no separate enquiry needed.</p>
-
-    <div class="availability-grid">
+    <div class="enquiry-grid">
+      <div>
+        <p class="eyebrow">CHECK AVAILABILITY &amp; ENQUIRE</p>
+        <h2>Check a date, then request to book.</h2>
+        <p>Pick a date to see open slots, then request to book directly — no separate enquiry needed.</p>
+        <div class="contact-mini">
+          <a href="tel:+919846718106">📞 98467 18106</a>
+          <a href="tel:+919946440088">📞 99464 40088</a>
+        </div>
+      </div>
+      <div class="form-card">
+        <div class="availability-grid">
       <div class="availability-left">
         <form id="pageAvailabilityForm" class="panel-form">
           <label hidden>Facility
             <select id="pageFacility"></select>
           </label>
-          <div class="form-row">
-            <label>Date
-              <input type="date" id="pageDate" required>
-            </label>
-            <label style="justify-content:flex-end;">
-              <span>&nbsp;</span>
-              <button type="submit" class="btn btn-primary">Check Availability</button>
-            </label>
-          </div>
+          <label>Date
+            <input type="date" id="pageDate" required>
+          </label>
+          <button type="submit" class="btn btn-blue">Check Availability</button>
         </form>
 
         <div id="pageSlotResult" class="availability-result" hidden></div>
       </div>
 
       <div class="availability-right">
-        <div id="bookingPlaceholder" class="availability-placeholder">
-          👈 Pick a date and an available slot on the left to book it here.
-        </div>
-
         <div id="bookingDetailsWrap" class="booking-details-wrap" hidden>
           <p class="slot-label">Request to Book — <span id="slotLabelText"></span></p>
           <form id="pageBookingForm" class="panel-form">
@@ -104,6 +103,7 @@
             <label>Notes
               <textarea name="notes" rows="2" placeholder="Event type, special requests..."></textarea>
             </label>
+            <p class="form-note-error" id="bookFormError" hidden></p>
             <button type="submit" class="btn btn-primary btn-lg">Send Booking Request</button>
             <p class="form-note">We'll save your request and show you a confirmation with a WhatsApp button.</p>
             <a href="#" id="changeSlotLink" class="change-slot-link">← Choose a different date/slot</a>
@@ -111,6 +111,8 @@
         </div>
 
         <div id="bookingConfirmation" class="confirmation-panel" hidden></div>
+      </div>
+    </div>
       </div>
     </div>
   </div>

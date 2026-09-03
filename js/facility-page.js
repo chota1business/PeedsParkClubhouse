@@ -83,9 +83,14 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-function isSupabaseReady() {
+function isSupabaseReady(errorId) {
   if (!supabaseClient) {
-    alert("Booking system isn't connected yet — please WhatsApp or call us directly for now.");
+    const msg = "Booking system isn't connected yet — please WhatsApp or call us directly for now.";
+    if (errorId && document.getElementById(errorId)) {
+      showFormError(errorId, msg);
+    } else {
+      alert(msg);
+    }
     return false;
   }
   return true;
@@ -115,6 +120,26 @@ function showPhoneError(noteId, inputId) {
     note.hidden = false;
   }
   document.getElementById(inputId)?.focus();
+}
+
+// Generic inline form error — shows msg in red inside the form itself
+// instead of a native alert() popup (honeypot/fill-time guard, name
+// validation, and the final booking-submit error all route through this).
+function showFormError(noteId, msg) {
+  const note = document.getElementById(noteId);
+  if (note) {
+    note.textContent = msg;
+    note.hidden = false;
+    note.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
+function clearFormError(noteId) {
+  const note = document.getElementById(noteId);
+  if (note) {
+    note.hidden = true;
+    note.textContent = "";
+  }
 }
 
 function statusBadgeStyle(status) {
@@ -268,6 +293,7 @@ function showBookingDetails(config, slotLabel) {
   if (placeholder) placeholder.hidden = true;
   wrap.hidden = false;
   document.getElementById("bookingConfirmation").hidden = true;
+  clearFormError("bookFormError");
   // Date + time slot being booked, shown here and repeated verbatim on the
   // "Booking request sent" confirmation panel.
   document.getElementById("slotLabelText").textContent = `${formatDateLabel(selectedSlot.date)} · ${slotLabel}`;
@@ -312,10 +338,11 @@ async function submitBooking(e, config) {
   if (!selectedSlot) return;
 
   const form = e.target;
+  clearFormError("bookFormError");
   const hp = document.getElementById("bookHp");
   if (hp && hp.value.trim() !== "") return;
   if (Date.now() - formRenderedAt < MIN_FILL_TIME_MS) {
-    alert("Please take a moment to fill in the form.");
+    showFormError("bookFormError", "Please take a moment to fill in the form.");
     return;
   }
 
@@ -325,10 +352,10 @@ async function submitBooking(e, config) {
     return;
   }
   if (!data.customer_name || data.customer_name.trim().length < 2) {
-    alert("Please enter your name.");
+    showFormError("bookFormError", "Please enter your name.");
     return;
   }
-  if (!isSupabaseReady()) return;
+  if (!isSupabaseReady("bookFormError")) return;
 
   const submitBtn = form.querySelector("button[type=submit]");
   submitBtn.disabled = true;
@@ -389,7 +416,7 @@ async function submitBooking(e, config) {
     } else if (error.message?.includes("Capacity exceeded") || error.message?.includes("conflicts with")) {
       msg = "That slot is already full or booked exclusively — please try a different time.";
     }
-    alert(msg);
+    showFormError("bookFormError", msg);
     return;
   }
 

@@ -445,7 +445,7 @@ function openEditBookingModal(booking) {
   form.elements["start_time"].value = booking.start_time;
   form.elements["duration"].value = String(durationHours(booking.start_time, booking.end_time));
   form.elements["guests"].value = booking.guests || "";
-  form.elements["mode"].value = booking.mode || "Shared";
+  form.elements["mode"].value = booking.mode || "shared";
   document.getElementById("editModeFieldWrap").hidden = booking.facility_id !== "pool";
   modal.hidden = false;
 }

@@ -27,9 +27,14 @@ document.addEventListener("DOMContentLoaded", () => {
 const formRenderedAt = Date.now();
 const MIN_FILL_TIME_MS = 3000;
 
-function isSupabaseReady() {
+function isSupabaseReady(errorId) {
   if (!supabaseClient) {
-    alert("Booking system isn't connected yet — please WhatsApp or call us directly for now.");
+    const msg = "Booking system isn't connected yet — please WhatsApp or call us directly for now.";
+    if (errorId && document.getElementById(errorId)) {
+      showFormError(errorId, msg);
+    } else {
+      alert(msg);
+    }
     return false;
   }
   return true;
@@ -66,12 +71,33 @@ function showPhoneError(noteId, inputId) {
   document.getElementById(inputId)?.focus();
 }
 
+// Generic inline form error — shows msg in red inside the form itself
+// instead of a native alert() popup.
+function showFormError(noteId, msg) {
+  const note = document.getElementById(noteId);
+  if (note) {
+    note.textContent = msg;
+    note.hidden = false;
+    note.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
+function clearFormError(noteId) {
+  const note = document.getElementById(noteId);
+  if (note) {
+    note.hidden = true;
+    note.textContent = "";
+  }
+}
+
 function setupEnquiryForm() {
   const form = document.getElementById("enquiryForm");
   if (!form) return;
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    clearFormError("enquiryFormError");
 
     // Honeypot: real visitors never fill this hidden field in.
     const hp = document.getElementById("hpField");
@@ -80,7 +106,7 @@ function setupEnquiryForm() {
     }
 
     if (Date.now() - formRenderedAt < MIN_FILL_TIME_MS) {
-      alert("Please take a moment to fill in the form.");
+      showFormError("enquiryFormError", "Please take a moment to fill in the form.");
       return;
     }
 
@@ -91,11 +117,11 @@ function setupEnquiryForm() {
       return;
     }
     if (!data.customer_name || data.customer_name.trim().length < 2) {
-      alert("Please enter your name.");
+      showFormError("enquiryFormError", "Please enter your name.");
       return;
     }
 
-    if (!isSupabaseReady()) return;
+    if (!isSupabaseReady("enquiryFormError")) return;
 
     const source = detectSource();
     const payload = {
@@ -135,7 +161,8 @@ function setupEnquiryForm() {
 
     if (error) {
       console.error(error);
-      alert(
+      showFormError(
+        "enquiryFormError",
         error.message?.includes("Too many submissions")
           ? "You've sent a few enquiries recently — please wait a bit before trying again, or WhatsApp us directly."
           : "Something went wrong sending your enquiry. Please try WhatsApp or call us instead."
