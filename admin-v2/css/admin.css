@@ -8,6 +8,14 @@
 .login-logo { text-align: center; font-size: 1.6rem; }
 .login-error { color: var(--coral-dark); font-weight: 600; margin-top: 10px; }
 
+/* Real photo logo + name, reused from the facility pages' shared .brand
+   component (css/style.css) — these are just the dark-header adjustments,
+   since .brand's default text colours assume a light background. */
+.admin-header .brand { margin-right: 16px; }
+.admin-header .brand strong { color: var(--white); }
+.admin-header .brand span { color: #B9C2CC; }
+.admin-header .brand img { border-color: var(--coral); }
+
 /* Admin header */
 .admin-header { background: var(--navy); color: var(--white); }
 .admin-header .logo { color: var(--white); }

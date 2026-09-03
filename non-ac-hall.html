@@ -33,11 +33,19 @@
   <div class="container hero-inner">
     <p class="eyebrow"><a href="club-house.html" style="color:inherit;">Club House</a> / Non-AC Hall</p>
     <h1>Non-AC Hall</h1>
-    <p class="hero-sub">A more budget-friendly indoor hall for parties and celebrations. Morning, evening or full-day slots.</p>
-    <div class="hero-actions">
+     <div class="hero-actions">
       <a href="#availability" class="btn btn-primary btn-lg">Check Availability &amp; Book</a>
       <a href="tel:+919846718106" class="btn btn-outline btn-lg">📞 Call Us</a>
     </div>
+  </div>
+</section>
+<section class="about" id="about">
+  <div class="container">
+    <div>
+          <p class="eyebrow dark">ABOUT THIS FACILITY</p>
+          <h2>Non-AC Hall</h2>
+        </div>
+    <p >A more budget-friendly indoor hall for parties and celebrations. Morning, evening or full-day slots.</p>
   </div>
 </section>
 
@@ -46,56 +54,66 @@
     <h2 class="center">Check Availability &amp; Book</h2>
     <p class="center muted">Pick a date to see open slots, then request to book directly — no separate enquiry needed.</p>
 
-    <form id="pageAvailabilityForm" class="panel-form">
-      <label hidden>Facility
-        <select id="pageFacility"></select>
-      </label>
-      <div class="form-row">
-        <label>Date
-          <input type="date" id="pageDate" required>
-        </label>
-        <label style="justify-content:flex-end;">
-          <span>&nbsp;</span>
-          <button type="submit" class="btn btn-primary">Check Availability</button>
-        </label>
+    <div class="availability-grid">
+      <div class="availability-left">
+        <form id="pageAvailabilityForm" class="panel-form">
+          <label hidden>Facility
+            <select id="pageFacility"></select>
+          </label>
+          <div class="form-row">
+            <label>Date
+              <input type="date" id="pageDate" required>
+            </label>
+            <label style="justify-content:flex-end;">
+              <span>&nbsp;</span>
+              <button type="submit" class="btn btn-primary">Check Availability</button>
+            </label>
+          </div>
+        </form>
+
+        <div id="pageSlotResult" class="availability-result" hidden></div>
       </div>
-    </form>
 
-    <div id="pageSlotResult" class="availability-result" hidden></div>
+      <div class="availability-right">
+        <div id="bookingPlaceholder" class="availability-placeholder">
+          👈 Pick a date and an available slot on the left to book it here.
+        </div>
 
-    <div id="bookingDetailsWrap" class="booking-details-wrap" hidden>
-      <p class="slot-label">Request to Book — <span id="slotLabelText"></span></p>
-      <form id="pageBookingForm" class="panel-form">
-        <div class="hp-field" aria-hidden="true">
-          <label>Leave blank<input type="text" name="website" id="bookHp" tabindex="-1" autocomplete="off"></label>
+        <div id="bookingDetailsWrap" class="booking-details-wrap" hidden>
+          <p class="slot-label">Request to Book — <span id="slotLabelText"></span></p>
+          <form id="pageBookingForm" class="panel-form">
+            <div class="hp-field" aria-hidden="true">
+              <label>Leave blank<input type="text" name="website" id="bookHp" tabindex="-1" autocomplete="off"></label>
+            </div>
+            <div class="form-row">
+              <label>Name*
+                <input type="text" name="customer_name" required minlength="2">
+              </label>
+              <label>Phone*
+                <input type="tel" name="phone" id="bookPhone" required inputmode="numeric" placeholder="10-digit mobile number">
+              </label>
+            </div>
+            <p class="form-note-error" id="bookPhoneNote" hidden></p>
+            <div class="form-row">
+              <label>Email
+                <input type="email" name="email">
+              </label>
+              <label>Number of guests
+                <input type="number" name="guests" min="1" placeholder="Approx. guests">
+              </label>
+            </div>
+            <label>Notes
+              <textarea name="notes" rows="2" placeholder="Event type, special requests..."></textarea>
+            </label>
+            <button type="submit" class="btn btn-primary btn-lg">Send Booking Request</button>
+            <p class="form-note">We'll save your request and show you a confirmation with a WhatsApp button.</p>
+            <a href="#" id="changeSlotLink" class="change-slot-link">← Choose a different date/slot</a>
+          </form>
         </div>
-        <div class="form-row">
-          <label>Name*
-            <input type="text" name="customer_name" required minlength="2">
-          </label>
-          <label>Phone*
-            <input type="tel" name="phone" id="bookPhone" required inputmode="numeric" placeholder="10-digit mobile number">
-          </label>
-        </div>
-        <p class="form-note-error" id="bookPhoneNote" hidden></p>
-        <div class="form-row">
-          <label>Email
-            <input type="email" name="email">
-          </label>
-          <label>Number of guests
-            <input type="number" name="guests" min="1" placeholder="Approx. guests">
-          </label>
-        </div>
-        <label>Notes
-          <textarea name="notes" rows="2" placeholder="Event type, special requests..."></textarea>
-        </label>
-        <button type="submit" class="btn btn-primary btn-lg">Send Booking Request</button>
-        <p class="form-note">We'll save your request and show you a confirmation with a WhatsApp button.</p>
-        <a href="#" id="changeSlotLink" class="change-slot-link">← Choose a different date/slot</a>
-      </form>
+
+        <div id="bookingConfirmation" class="confirmation-panel" hidden></div>
+      </div>
     </div>
-
-    <div id="bookingConfirmation" class="confirmation-panel" hidden></div>
   </div>
 </section>
 <footer class="site-footer" id="contact">

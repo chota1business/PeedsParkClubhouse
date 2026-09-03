@@ -31,19 +31,20 @@
 
 <section class="hero hero-photo" style="background-image:url('images/Badmintoncourtoutside.jpeg');">
   <div class="container hero-inner">
-    <p class="eyebrow">Facilities</p>
     <h1>Badminton Court</h1>
-    <p class="hero-sub">Two courts for badminton and sports activities, 5 AM – 11 PM. Some hours are reserved for members — the picker below shows exactly what's open.</p>
-    <div class="hero-actions">
+     <div class="hero-actions">
       <a href="#availability" class="btn btn-primary btn-lg">Check Availability &amp; Book</a>
       <a href="tel:+919846718106" class="btn btn-outline btn-lg">📞 Call Us</a>
     </div>
   </div>
 </section>
-
 <section class="about" id="about">
   <div class="container">
-    <p class="lead center">Two badminton courts, open for casual play, sports activities and coaching. Pick a court and date below to see open hours and request a booking.</p>
+    <div>
+          <p class="eyebrow dark">ABOUT THIS FACILITY</p>
+          <h2>Badminton Court</h2>
+        </div>
+    <p >Enjoy the badminton court for recreation, fitness and activities. Bring the family for a shared session, or book the whole court exclusively for a private group or party.Two badminton courts, open for casual play, sports activities and coaching.</p>
   </div>
 </section>
 
@@ -52,60 +53,70 @@
     <h2 class="center">Check Availability &amp; Book</h2>
     <p class="center muted">Choose a court and date to see open hours, then request to book directly — no separate enquiry needed.</p>
 
-    <form id="pageAvailabilityForm" class="panel-form">
-      <div class="form-row">
-        <label>Court
-          <select id="pageFacility"></select>
-        </label>
-        <label>Date
-          <input type="date" id="pageDate" required>
-        </label>
+    <div class="availability-grid">
+      <div class="availability-left">
+        <form id="pageAvailabilityForm" class="panel-form">
+          <div class="form-row">
+            <label>Court
+              <select id="pageFacility"></select>
+            </label>
+            <label>Date
+              <input type="date" id="pageDate" required>
+            </label>
+          </div>
+          <button type="submit" class="btn btn-primary">Check Availability</button>
+        </form>
+
+        <div id="pageSlotResult" class="availability-result" hidden></div>
       </div>
-      <button type="submit" class="btn btn-primary">Check Availability</button>
-    </form>
 
-    <div id="pageSlotResult" class="availability-result" hidden></div>
+      <div class="availability-right">
+        <div id="bookingPlaceholder" class="availability-placeholder">
+          👈 Pick a court, date and an available hour on the left to book it here.
+        </div>
 
-    <div id="bookingDetailsWrap" class="booking-details-wrap" hidden>
-      <p class="slot-label">Request to Book — <span id="slotLabelText"></span></p>
-      <form id="pageBookingForm" class="panel-form">
-        <div class="hp-field" aria-hidden="true">
-          <label>Leave blank<input type="text" name="website" id="bookHp" tabindex="-1" autocomplete="off"></label>
+        <div id="bookingDetailsWrap" class="booking-details-wrap" hidden>
+          <p class="slot-label">Request to Book — <span id="slotLabelText"></span></p>
+          <form id="pageBookingForm" class="panel-form">
+            <div class="hp-field" aria-hidden="true">
+              <label>Leave blank<input type="text" name="website" id="bookHp" tabindex="-1" autocomplete="off"></label>
+            </div>
+            <div class="form-row">
+              <label>Name*
+                <input type="text" name="customer_name" required minlength="2">
+              </label>
+              <label>Phone*
+                <input type="tel" name="phone" id="bookPhone" required inputmode="numeric" placeholder="10-digit mobile number">
+              </label>
+            </div>
+            <p class="form-note-error" id="bookPhoneNote" hidden></p>
+            <div class="form-row">
+              <label>Email
+                <input type="email" name="email">
+              </label>
+              <label id="durationFieldWrap">Duration
+                <select name="duration" id="bookDuration">
+                  <option value="1">1 hour</option>
+                  <option value="2">2 hours</option>
+                  <option value="3">3 hours</option>
+                </select>
+              </label>
+            </div>
+            <label id="modeGuestsWrap" hidden>Guests
+              <input type="number" name="guests" min="1">
+            </label>
+            <label>Notes
+              <textarea name="notes" rows="2" placeholder="Anything else we should know..."></textarea>
+            </label>
+            <button type="submit" class="btn btn-primary btn-lg">Send Booking Request</button>
+            <p class="form-note">We'll save your request and show you a confirmation with a WhatsApp button.</p>
+            <a href="#" id="changeSlotLink" class="change-slot-link">← Choose a different court/date/slot</a>
+          </form>
         </div>
-        <div class="form-row">
-          <label>Name*
-            <input type="text" name="customer_name" required minlength="2">
-          </label>
-          <label>Phone*
-            <input type="tel" name="phone" id="bookPhone" required inputmode="numeric" placeholder="10-digit mobile number">
-          </label>
-        </div>
-        <p class="form-note-error" id="bookPhoneNote" hidden></p>
-        <div class="form-row">
-          <label>Email
-            <input type="email" name="email">
-          </label>
-          <label id="durationFieldWrap">Duration
-            <select name="duration" id="bookDuration">
-              <option value="1">1 hour</option>
-              <option value="2">2 hours</option>
-              <option value="3">3 hours</option>
-            </select>
-          </label>
-        </div>
-        <label id="modeGuestsWrap" hidden>Guests
-          <input type="number" name="guests" min="1">
-        </label>
-        <label>Notes
-          <textarea name="notes" rows="2" placeholder="Anything else we should know..."></textarea>
-        </label>
-        <button type="submit" class="btn btn-primary btn-lg">Send Booking Request</button>
-        <p class="form-note">We'll save your request and show you a confirmation with a WhatsApp button.</p>
-        <a href="#" id="changeSlotLink" class="change-slot-link">← Choose a different court/date/slot</a>
-      </form>
+
+        <div id="bookingConfirmation" class="confirmation-panel" hidden></div>
+      </div>
     </div>
-
-    <div id="bookingConfirmation" class="confirmation-panel" hidden></div>
   </div>
 </section>
 

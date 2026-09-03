@@ -78,6 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("changeSlotLink")?.addEventListener("click", (e) => {
     e.preventDefault();
+    selectedSlot = null;
     backToSlotPicker();
   });
 });
@@ -123,6 +124,15 @@ function statusBadgeStyle(status) {
   if (status === "Reserved") return "background:#E8DDEF;color:#5A3A78;";
   if (status === "Past") return "background:#e0e0e0;color:#777777;";
   return "background:#F4CCCC;color:#9c2b2b;"; // Booked / Full
+}
+
+// Human-readable date for the "date + slot being booked" recap shown once
+// a slot is picked, and again on the "Booking request sent" confirmation —
+// e.g. "Wed, 10 Sep 2026". Parsed with an explicit local midnight so the
+// weekday never shifts a day off from a bare "YYYY-MM-DD" being read as UTC.
+function formatDateLabel(dateStr) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  return d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 }
 
 function isPastSlot(dateStr, startTime) {
@@ -208,7 +218,7 @@ async function refreshSlotPicker(config) {
     resultBox.innerHTML = `<div>${rows}</div><p class="form-note" style="margin-top:10px;">Pick an open slot above to request a booking.</p>`;
     wireSlotButtons(resultBox, (index) => {
       const slot = slotsList[index];
-      selectedSlot = { facility, date, type: "fixed", slotKey: slot.key, label: slot.label };
+      selectedSlot = { facility, date, type: "fixed", slotKey: slot.key, label: slot.label, humanLabel: slot.label };
       showBookingDetails(config, slot.label);
     });
     return;
@@ -225,11 +235,12 @@ async function refreshSlotPicker(config) {
     resultBox.innerHTML = `<div>${rows}</div><p class="form-note" style="margin-top:10px;">Pick an open hour above to start your booking.</p>`;
     wireSlotButtons(resultBox, (index) => {
       const slot = slots[index];
+      const humanLabel = `${slot.start} – ${slot.end}`;
       selectedSlot = {
         facility, date, type: "hourly", start: slot.start,
-        remaining: slot.remaining, capacity: slot.capacity, bookingModel: data.bookingModel,
+        remaining: slot.remaining, capacity: slot.capacity, bookingModel: data.bookingModel, humanLabel,
       };
-      showBookingDetails(config, `${slot.start} – ${slot.end}`);
+      showBookingDetails(config, humanLabel);
     });
     return;
   }
@@ -246,12 +257,20 @@ function wireSlotButtons(container, onClick) {
 // Reveals the inline mini booking form under the slot list, mirroring the
 // old site's "Request to Book — <slot>" reveal instead of a separate section.
 function showBookingDetails(config, slotLabel) {
-  document.getElementById("pageSlotResult").hidden = true;
-  document.getElementById("pageAvailabilityForm").hidden = true;
+  // Note: the availability form/slot list are left visible (not hidden) now
+  // that they live in the left column and the booking form is in the right
+  // column — the customer can see both the slot they picked and the full
+  // list at once, and can pick a different slot without a "change slot"
+  // round-trip. Only the right-column placeholder is swapped out.
   const wrap = document.getElementById("bookingDetailsWrap");
+  const placeholder = document.getElementById("bookingPlaceholder");
   if (!wrap) return;
+  if (placeholder) placeholder.hidden = true;
   wrap.hidden = false;
-  document.getElementById("slotLabelText").textContent = slotLabel;
+  document.getElementById("bookingConfirmation").hidden = true;
+  // Date + time slot being booked, shown here and repeated verbatim on the
+  // "Booking request sent" confirmation panel.
+  document.getElementById("slotLabelText").textContent = `${formatDateLabel(selectedSlot.date)} · ${slotLabel}`;
 
   const durationWrap = document.getElementById("durationFieldWrap");
   const modeWrap = document.getElementById("modeGuestsWrap");
@@ -263,12 +282,20 @@ function showBookingDetails(config, slotLabel) {
 
 function backToSlotPicker() {
   const wrap = document.getElementById("bookingDetailsWrap");
+  const placeholder = document.getElementById("bookingPlaceholder");
   const resultBox = document.getElementById("pageSlotResult");
   const form = document.getElementById("pageAvailabilityForm");
+  const confirmation = document.getElementById("bookingConfirmation");
   if (wrap) wrap.hidden = true;
+  if (placeholder) placeholder.hidden = false;
   if (resultBox) resultBox.hidden = false;
   if (form) form.hidden = false;
+  if (confirmation) confirmation.hidden = true;
   document.getElementById("pageBookingForm")?.reset();
+}
+
+function facilityLabelFor(config, facilityId) {
+  return config.facilities.find((f) => f.id === facilityId)?.label || facilityId;
 }
 
 function addHours(time, hours) {
@@ -321,12 +348,17 @@ async function submitBooking(e, config) {
       p_notes: data.notes?.trim() || null,
     }));
     code = result?.[0]?.booking_code;
-    confirmDetails = { facility: selectedSlot.facility, date: selectedSlot.date, slot: selectedSlot.slotKey };
+    confirmDetails = {
+      facility: selectedSlot.facility, date: selectedSlot.date, slot: selectedSlot.slotKey,
+      facilityLabel: facilityLabelFor(config, selectedSlot.facility),
+      dateLabel: formatDateLabel(selectedSlot.date), humanLabel: selectedSlot.humanLabel,
+    };
   } else {
     const duration = Number(document.getElementById("bookDuration")?.value || 1);
     const isPool = config.showModeAndGuests;
     const startTime = selectedSlot.start;
     const endTime = addHours(startTime, duration);
+    const humanLabel = `${startTime} – ${endTime}`;
 
     ({ data: result, error } = await supabaseClient.rpc("submit_hourly_booking", {
       p_customer_name: data.customer_name.trim(),
@@ -339,7 +371,11 @@ async function submitBooking(e, config) {
       p_mode: isPool ? data.mode : null,
     }));
     code = result?.[0]?.booking_code;
-    confirmDetails = { facility: selectedSlot.facility, date: selectedSlot.date, start_time: startTime, end_time: endTime };
+    confirmDetails = {
+      facility: selectedSlot.facility, date: selectedSlot.date, start_time: startTime, end_time: endTime,
+      facilityLabel: facilityLabelFor(config, selectedSlot.facility),
+      dateLabel: formatDateLabel(selectedSlot.date), humanLabel,
+    };
   }
 
   submitBtn.disabled = false;
@@ -378,6 +414,8 @@ function showBookingConfirmation(code, details) {
     <div style="text-align:center;">
       <div style="font-size:40px;margin-bottom:10px;">✅</div>
       <h3 style="margin:0 0 8px;">Booking request sent!</h3>
+      <p class="confirm-details">${details.facilityLabel}</p>
+      <p class="confirm-details" style="margin-bottom:14px;"><strong>${details.dateLabel} · ${details.humanLabel}</strong></p>
       <p class="muted" style="margin:0 0 6px;">Reference</p>
       <p style="font-size:1.2rem;font-weight:700;margin:0 0 16px;">${code}</p>
       <p style="font-weight:700;margin:0 0 16px;">Your request is sent for confirmation.</p>
