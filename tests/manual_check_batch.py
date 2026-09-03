@@ -182,6 +182,63 @@ def run():
         check("Manager Feed has the Convert-to-Booking modal", has_convert_modal)
         page.close()
 
+        # --- Check 7 (2026-09-03 batch): Edit action hidden on approved bookings ---
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.add_init_script("window.__STAFF_ROLE__ = 'admin';")
+        page.goto(f"file://{ROOT}/admin-v2/hourly-bookings.html")
+        page.wait_for_timeout(300)
+        approved_html = page.evaluate("""() => {
+            allHourly = [{ id: 'b1', status: 'approved', payment_status: 'partial', customer_name: 'A', phone: '9846718106',
+                           booking_code: 'HB-1', facility_id: 'pool', booking_date: '2026-09-05', start_time: '17:00', end_time: '18:00' }];
+            return bookingRowHtml(allHourly[0]);
+        }""")
+        pending_html = page.evaluate("""() => {
+            allHourly = [{ id: 'b2', status: 'pending', payment_status: 'unpaid', customer_name: 'B', phone: '9846718106',
+                           booking_code: 'HB-2', facility_id: 'pool', booking_date: '2026-09-05', start_time: '17:00', end_time: '18:00' }];
+            return bookingRowHtml(allHourly[0]);
+        }""")
+        check("Pool/Badminton: Edit button hidden on an approved booking", 'data-action="edit"' not in approved_html)
+        check("Pool/Badminton: Cancel + Update Payment still shown on an approved booking", 'data-action="cancel"' in approved_html and 'data-action="update_payment"' in approved_html)
+        check("Pool/Badminton: Edit button still shown on a pending booking", 'data-action="edit"' in pending_html)
+        page.close()
+
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.add_init_script("window.__STAFF_ROLE__ = 'admin';")
+        page.goto(f"file://{ROOT}/admin-v2/bookings.html")
+        page.wait_for_timeout(300)
+        hall_approved_html = page.evaluate("""() => {
+            return bookingRowHtml({ id: 'c1', status: 'approved', payment_status: 'partial', customer_name: 'C', phone: '9846718106',
+                                     booking_code: 'BK-1', facility_id: 'lawn', booking_date: '2026-09-05', slot: 'evening' });
+        }""")
+        check("Hall/Lawn: Edit button hidden on an approved booking", 'data-action="edit"' not in hall_approved_html)
+        page.close()
+
+        # --- Check 8 (2026-09-03 batch): Partial payment now allowed for Pool/Badminton ---
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.add_init_script("window.__STAFF_ROLE__ = 'admin';")
+        page.goto(f"file://{ROOT}/admin-v2/hourly-bookings.html")
+        page.wait_for_timeout(300)
+        page.evaluate("""() => {
+            window.__paymentPromise2 = promptPaymentEntry({allowPartial: true, label: 'Approve HB-1 for Test'});
+        }""")
+        page.wait_for_timeout(200)
+        note_hidden = page.eval_on_selector(".pp-modal-partial-note", "el => el.hidden")
+        check("Pool/Badminton payment modal no longer shows the 'must be paid in full' note", note_hidden)
+        page.fill("#ppTotalInput", "1000")
+        page.fill("#ppPaidInput", "400")
+        page.click(".pp-modal-save")
+        page.wait_for_timeout(200)
+        result = page.evaluate("() => window.__paymentPromise2")
+        check("Pool/Badminton: entering a partial amount (400 of 1000) resolves with payment_status 'partial', no error",
+              result and result.get("payment_status") == "partial")
+        page.close()
+
         browser.close()
 
     total = len(results)

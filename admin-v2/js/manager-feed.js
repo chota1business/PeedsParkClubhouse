@@ -242,9 +242,9 @@ async function handleBookingAction(id, recordType, action) {
   }
 
   if (action === "approve") {
-    const allowPartial = recordType === "hall_lawn_booking";
+    // Both Hall/Lawn and Pool/Badminton now allow Partial (advance) payment.
     const entry = await promptPaymentEntry({
-      allowPartial,
+      allowPartial: true,
       label: `Approve ${row.code} for ${row.customer_name}`,
     });
     if (!entry) return;
@@ -346,7 +346,7 @@ async function submitAddBooking(e) {
   let paymentEntry = null;
   if (markApproved) {
     paymentEntry = await promptPaymentEntry({
-      allowPartial: isHallLawn,
+      allowPartial: true,
       label: `Approve this booking for ${data.customer_name.trim()}`,
     });
     if (!paymentEntry) return; // backed out — leave the modal open, nothing saved yet
@@ -574,7 +574,7 @@ async function submitConvert(e) {
   let paymentEntry = null;
   if (markApproved) {
     paymentEntry = await promptPaymentEntry({
-      allowPartial: isHallLawn,
+      allowPartial: true,
       label: `Approve this booking for ${enquiry.customer_name}`,
     });
     if (!paymentEntry) return;

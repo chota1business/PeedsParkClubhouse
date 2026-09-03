@@ -81,7 +81,9 @@ function bookingRowHtml(b) {
       actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="update_payment">💰 Update Payment</button>`);
     }
   }
-  if (b.status === "pending" || b.status === "approved") {
+  if (b.status === "pending") {
+    // Once approved, editing details is no longer offered here — cancel and
+    // rebook instead, or use Update Payment to adjust what was paid.
     actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="edit">✏️ Edit</button>`);
   }
   // Refund only makes sense once cancelled, and only if money had actually

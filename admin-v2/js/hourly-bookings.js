@@ -179,7 +179,9 @@ function bookingRowHtml(b) {
       actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="update_payment">💰 Update Payment</button>`);
     }
   }
-  if (b.status === "pending" || b.status === "approved") {
+  if (b.status === "pending") {
+    // Once approved, editing details is no longer offered here — cancel and
+    // rebook instead, or use Update Payment to adjust what was paid.
     actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="edit">✏️ Edit</button>`);
   }
 
@@ -233,11 +235,10 @@ async function handleAction(id, action) {
   renderBookings();
 }
 
-// Pool/Badminton must be paid in full to approve — no Partial here (DB-enforced
-// backstop too: hourly_bookings_no_partial_check).
+// Pool/Badminton now allow Partial (advance) payment too, same as Hall/Lawn.
 async function approveWithPayment(booking) {
   const entry = await promptPaymentEntry({
-    allowPartial: false,
+    allowPartial: true,
     label: `Approve ${booking.booking_code} for ${booking.customer_name}`,
   });
   if (!entry) return;
@@ -275,7 +276,7 @@ async function approveWithPayment(booking) {
 
 async function updatePayment(booking) {
   const entry = await promptPaymentEntry({
-    allowPartial: false,
+    allowPartial: true,
     previousTotal: booking.total_amount,
     previousPaid: booking.amount_paid,
     label: `Update payment for ${booking.booking_code}`,
