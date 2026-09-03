@@ -94,30 +94,12 @@ function renderBookings() {
 function bookingRowHtml(b) {
   const color = BOOKING_STATUS_COLORS[b.status] || "#999";
   const waLink = `https://wa.me/${b.phone.replace(/\D/g, "")}`;
-  const actions = [];
-  if (b.status === "pending") {
-    actions.push(`<button class="btn btn-primary btn-sm" data-id="${b.id}" data-action="approve">✅ Approve</button>`);
-  }
-  // Reject (pending) and Cancel (approved) are the same button now — Cancel
-  // decides what it means from the booking's own current status, so staff
-  // only ever have one "stop this booking" action to reach for.
-  if (b.status === "pending" || b.status === "approved") {
-    actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="cancel">🚫 Cancel</button>`);
-  }
-  if (b.status === "approved" && b.payment_status !== "received") {
-    actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="update_payment">💰 Update Payment</button>`);
-  }
-  if (b.status === "pending") {
-    // Once approved, editing details is no longer offered here — cancel and
-    // rebook instead, or use Update Payment to adjust what was paid.
-    actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="edit">✏️ Edit</button>`);
-  }
-  // Refund only makes sense once cancelled, and only if money had actually
-  // changed hands (payment_status partial/received) — DB-enforced too
-  // (booking_requests_refund_requires_cancelled_check).
-  if (b.status === "cancelled" && b.payment_status !== "unpaid") {
-    actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="refund">💸 ${b.refund_status !== "none" ? "Update Refund" : "Refund"}</button>`);
-  }
+  const telLink = `tel:${b.phone.replace(/\D/g, "")}`;
+  // Every row gets exactly the same three actions now — Edit is the one
+  // place status, payment and (once cancelled) refund get changed. Terminal
+  // bookings (rejected/cancelled) have nothing left to edit, so they only
+  // get WhatsApp/Call.
+  const canEdit = b.status === "pending" || b.status === "approved";
 
   const cancelInfo = b.status === "cancelled" && (b.cancellation_reason || b.refund_status !== "none")
     ? `<div class="muted small">
@@ -143,8 +125,9 @@ function bookingRowHtml(b) {
         ${b.notes ? `<p class="enquiry-message">${escapeHtml(b.notes)}</p>` : ""}
       </div>
       <div class="enquiry-card-actions">
-        ${actions.join("")}
+        ${canEdit ? `<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="edit">✏️ Edit</button>` : ""}
         <a class="btn btn-outline-dark btn-sm" href="${waLink}" target="_blank" rel="noopener">💬 WhatsApp</a>
+        <a class="btn btn-outline-dark btn-sm" href="${telLink}">📞 Call</a>
       </div>
     </div>`;
 }
@@ -152,168 +135,7 @@ function bookingRowHtml(b) {
 async function handleBookingAction(id, action) {
   const booking = allBookings.find(b => b.id === id);
   if (!booking) return;
-
-  if (action === "cancel") return cancelBooking(booking);
-  if (action === "refund") return recordRefund(booking);
-  if (action === "approve") return approveWithPayment(booking);
-  if (action === "update_payment") return updatePayment(booking);
   if (action === "edit") return openEditBookingModal(booking);
-}
-
-// Hall/Lawn/AC/Non-AC allow a Partial (advance) payment — every facility on
-// this page does, since Pool/Badminton live on the separate hourly-bookings
-// page. Approval can't complete until an amount is entered, per owner
-// request: no booking gets confirmed to the customer without payment being
-// recorded first.
-async function approveWithPayment(booking) {
-  const entry = await promptPaymentEntry({
-    allowPartial: true,
-    label: `Approve ${booking.booking_code} for ${booking.customer_name}`,
-  });
-  if (!entry) return;
-
-  const update = {
-    status: "approved",
-    total_amount: entry.total_amount,
-    amount_paid: entry.amount_paid,
-    payment_status: entry.payment_status,
-    approved_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  update.approved_by = user.id;
-
-  const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", booking.id);
-  if (error) {
-    // The approved-slot unique index (one facility/date/slot can only have one
-    // approved booking) surfaces here as a constraint violation if two pending
-    // requests target the same slot and both get approved.
-    alert(
-      error.message?.includes("duplicate key") || error.code === "23505"
-        ? "That slot is already approved for another booking on this date."
-        : "Couldn't approve this booking: " + error.message
-    );
-    return;
-  }
-
-  await writeAudit("approve_booking", "booking_requests", booking.id, {
-    booking_code: booking.booking_code, total_amount: entry.total_amount, amount_paid: entry.amount_paid,
-  });
-  Object.assign(booking, update);
-  renderBookings();
-}
-
-async function updatePayment(booking) {
-  const entry = await promptPaymentEntry({
-    allowPartial: true,
-    previousTotal: booking.total_amount,
-    previousPaid: booking.amount_paid,
-    label: `Update payment for ${booking.booking_code}`,
-  });
-  if (!entry) return;
-
-  const update = {
-    total_amount: entry.total_amount,
-    amount_paid: entry.amount_paid,
-    payment_status: entry.payment_status,
-    updated_at: new Date().toISOString(),
-  };
-  const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", booking.id);
-  if (error) {
-    alert("Couldn't update payment: " + error.message);
-    return;
-  }
-
-  await writeAudit("update_payment", "booking_requests", booking.id, {
-    booking_code: booking.booking_code, total_amount: entry.total_amount, amount_paid: entry.amount_paid,
-  });
-  Object.assign(booking, update);
-  renderBookings();
-}
-
-// One button covers both the old "Reject" (a pending request that never
-// gets approved) and "Cancel" (an already-approved booking called off) —
-// which of the two happens is decided by the booking's own current status,
-// not by which button was clicked. A pending booking becomes 'rejected';
-// an approved one becomes 'cancelled' and frees its slot.
-async function cancelBooking(booking) {
-  const isPending = booking.status === "pending";
-  const reason = prompt(
-    isPending
-      ? `Decline the pending request ${booking.booking_code} for ${booking.customer_name}? This cannot be undone from here.\n\nReason (shown to staff only, optional):`
-      : `Cancel the approved booking ${booking.booking_code} for ${booking.customer_name}? This frees the slot back up.\n\nReason for cancellation (shown to staff only, optional):`,
-    ""
-  );
-  if (reason === null) return; // staff backed out of the dialog entirely
-
-  if (isPending) {
-    const update = { status: "rejected", updated_at: new Date().toISOString() };
-    const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", booking.id);
-    if (error) {
-      alert("Couldn't update this booking: " + error.message);
-      return;
-    }
-    await writeAudit("reject_booking", "booking_requests", booking.id, { booking_code: booking.booking_code });
-    Object.assign(booking, update);
-    renderBookings();
-    return;
-  }
-
-  const update = {
-    status: "cancelled",
-    cancellation_reason: reason.trim() || null,
-    cancelled_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-
-  const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", booking.id);
-  if (error) {
-    alert("Couldn't cancel this booking: " + error.message);
-    return;
-  }
-
-  await writeAudit("cancel_booking", "booking_requests", booking.id, { booking_code: booking.booking_code, reason: update.cancellation_reason });
-  Object.assign(booking, update);
-  renderBookings();
-}
-
-async function recordRefund(booking) {
-  const current = booking.refund_status !== "none" ? booking.refund_status : "";
-  let refundStatus = prompt(
-    `Refund status for ${booking.booking_code} (payment was: ${booking.payment_status}).\nType one of: none, partial, full`,
-    current
-  );
-  if (refundStatus === null) return;
-  refundStatus = refundStatus.trim().toLowerCase();
-  if (!["none", "partial", "full"].includes(refundStatus)) {
-    alert('Refund status must be exactly one of: none, partial, full.');
-    return;
-  }
-
-  let notes = "";
-  if (refundStatus !== "none") {
-    notes = prompt(`What happened? (e.g. "₹5000 refunded via UPI on 12 Sep")`, booking.refund_notes || "");
-    if (notes === null) return;
-  }
-
-  const update = {
-    refund_status: refundStatus,
-    refund_notes: refundStatus === "none" ? null : (notes.trim() || null),
-    updated_at: new Date().toISOString(),
-  };
-
-  const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", booking.id);
-  if (error) {
-    // booking_requests_refund_requires_cancelled_check is the real backstop —
-    // the Refund button only shows for already-cancelled bookings, so this
-    // shouldn't fire in practice, but the DB is what actually enforces it.
-    alert("Couldn't save refund status: " + error.message);
-    return;
-  }
-
-  await writeAudit("record_refund", "booking_requests", booking.id, { booking_code: booking.booking_code, refund_status: refundStatus });
-  Object.assign(booking, update);
-  renderBookings();
 }
 
 async function loadBlocks() {
@@ -395,23 +217,52 @@ async function removeBlock(id) {
 }
 
 // ---------- Edit Booking modal ----------
+// Single place to change everything about a booking: status (approve a
+// pending request, or cancel an approved one — replacing the old separate
+// Reject/Cancel buttons), payment (total/paid), and — only once the
+// booking is being set to cancelled — refund status/notes. Phone is shown
+// but disabled, so it never leaves the form's payload.
+
+// What status a booking can move to, from its current status.
+const BOOKING_STATUS_OPTIONS = {
+  pending: [["pending", "Pending"], ["approved", "Approved"], ["rejected", "Rejected"]],
+  approved: [["approved", "Approved"], ["cancelled", "Cancelled"]],
+};
 
 function wireEditBookingModal() {
   const modal = document.getElementById("editBookingModal");
   document.getElementById("closeEditBookingBtn").addEventListener("click", () => { modal.hidden = true; });
   document.getElementById("editBookingForm").addEventListener("submit", submitEditBooking);
+  document.getElementById("editBookingStatus").addEventListener("change", (e) => {
+    document.getElementById("editCancelFields").hidden = e.target.value !== "cancelled";
+  });
 }
 
 function openEditBookingModal(booking) {
   const modal = document.getElementById("editBookingModal");
   const form = document.getElementById("editBookingForm");
+  document.getElementById("editBookingError").hidden = true;
+
   form.elements["id"].value = booking.id;
   form.elements["customer_name"].value = booking.customer_name;
-  form.elements["phone"].value = booking.phone;
+  form.elements["phone"].value = booking.phone; // locked — shown for reference only
   form.elements["booking_date"].value = booking.booking_date;
   form.elements["slot"].value = booking.slot;
   form.elements["guests"].value = booking.guests || "";
   form.elements["notes"].value = booking.notes || "";
+  form.elements["total_amount"].value = booking.total_amount ?? "";
+  form.elements["amount_paid"].value = booking.amount_paid ?? "";
+  form.elements["cancellation_reason"].value = booking.cancellation_reason || "";
+  form.elements["refund_status"].value = booking.refund_status || "none";
+  form.elements["refund_notes"].value = booking.refund_notes || "";
+
+  const statusSelect = document.getElementById("editBookingStatus");
+  const options = BOOKING_STATUS_OPTIONS[booking.status] || [[booking.status, booking.status]];
+  statusSelect.innerHTML = options.map(([v, label]) => `<option value="${v}">${label}</option>`).join("");
+  statusSelect.value = booking.status;
+  document.getElementById("editCancelFields").hidden = booking.status !== "cancelled";
+
+  modal.dataset.originalStatus = booking.status;
   modal.hidden = false;
 }
 
@@ -419,38 +270,107 @@ async function submitEditBooking(e) {
   e.preventDefault();
   const form = e.target;
   const data = Object.fromEntries(new FormData(form).entries());
+  const errorEl = document.getElementById("editBookingError");
+  errorEl.hidden = true;
 
-  if (!/^[0-9]{10}$/.test(data.phone)) {
-    alert("Please enter a valid 10-digit mobile number.");
+  const modal = document.getElementById("editBookingModal");
+  const originalStatus = modal.dataset.originalStatus;
+  const booking = allBookings.find(b => b.id === data.id);
+  if (!booking) return;
+
+  const newStatus = data.status;
+  const totalAmount = data.total_amount.trim() === "" ? null : Number(data.total_amount);
+  const amountPaid = data.amount_paid.trim() === "" ? null : Number(data.amount_paid);
+
+  if (totalAmount != null && (!Number.isFinite(totalAmount) || totalAmount < 0)) {
+    errorEl.textContent = "Total amount must be 0 or more.";
+    errorEl.hidden = false;
     return;
+  }
+  if (amountPaid != null && (!Number.isFinite(amountPaid) || amountPaid < 0)) {
+    errorEl.textContent = "Amount paid must be 0 or more.";
+    errorEl.hidden = false;
+    return;
+  }
+  if (totalAmount != null && amountPaid != null && amountPaid > totalAmount) {
+    errorEl.textContent = "Amount paid can't be more than the total amount.";
+    errorEl.hidden = false;
+    return;
+  }
+
+  // Approving a booking requires payment to have been recorded — no booking
+  // gets confirmed to the customer without an amount entered first. Partial
+  // payment is fine (Hall/Lawn/AC/Non-AC all allow it).
+  if (newStatus === "approved" && originalStatus === "pending" && totalAmount == null) {
+    errorEl.textContent = "Enter a total amount before approving this booking.";
+    errorEl.hidden = false;
+    return;
+  }
+
+  let paymentStatus = booking.payment_status;
+  if (totalAmount != null || amountPaid != null) {
+    const t = totalAmount ?? booking.total_amount ?? 0;
+    const p = amountPaid ?? booking.amount_paid ?? 0;
+    paymentStatus = p >= t && t > 0 ? "received" : p > 0 ? "partial" : "unpaid";
   }
 
   const update = {
     customer_name: data.customer_name.trim(),
-    phone: data.phone.trim(),
     booking_date: data.booking_date,
     slot: data.slot,
     guests: data.guests ? Number(data.guests) : null,
     notes: data.notes?.trim() || null,
+    status: newStatus,
+    total_amount: totalAmount,
+    amount_paid: amountPaid,
+    payment_status: paymentStatus,
     updated_at: new Date().toISOString(),
   };
 
+  let auditAction = "edit_booking";
+  if (newStatus !== originalStatus) {
+    if (newStatus === "approved") {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      update.approved_by = user.id;
+      update.approved_at = new Date().toISOString();
+      auditAction = "approve_booking";
+    } else if (newStatus === "rejected") {
+      auditAction = "reject_booking";
+    } else if (newStatus === "cancelled") {
+      update.cancellation_reason = data.cancellation_reason?.trim() || null;
+      update.cancelled_at = new Date().toISOString();
+      auditAction = "cancel_booking";
+    }
+  }
+
+  if (newStatus === "cancelled") {
+    const refundStatus = data.refund_status || "none";
+    if (!["none", "partial", "full"].includes(refundStatus)) {
+      errorEl.textContent = "Refund status must be none, partial, or full.";
+      errorEl.hidden = false;
+      return;
+    }
+    update.cancellation_reason = data.cancellation_reason?.trim() || null;
+    update.refund_status = refundStatus;
+    update.refund_notes = refundStatus === "none" ? null : (data.refund_notes?.trim() || null);
+  }
+
   const { error } = await supabaseClient.from("booking_requests").update(update).eq("id", data.id);
   if (error) {
-    // Same approved-slot unique index applies here if the new date/slot
-    // collides with another approved booking.
-    alert(
+    // Same approved-slot unique index applies here — if the new date/slot,
+    // or approving into an already-taken slot, collides with another
+    // approved booking.
+    errorEl.textContent =
       error.message?.includes("duplicate key") || error.code === "23505"
         ? "That slot is already approved for another booking on this date."
-        : "Couldn't save changes: " + error.message
-    );
+        : "Couldn't save changes: " + error.message;
+    errorEl.hidden = false;
     return;
   }
 
-  await writeAudit("edit_booking", "booking_requests", data.id, { booking_date: data.booking_date, slot: data.slot });
-  const booking = allBookings.find(b => b.id === data.id);
-  if (booking) Object.assign(booking, update);
-  document.getElementById("editBookingModal").hidden = true;
+  await writeAudit(auditAction, "booking_requests", data.id, { booking_code: booking.booking_code, status: newStatus });
+  Object.assign(booking, update);
+  modal.hidden = true;
   renderBookings();
 }
 

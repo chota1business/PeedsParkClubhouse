@@ -50,6 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   wireConvertModal();
   wireExpensesControls();
   wireAddExpenseModal();
+  wireEditFeedBookingModal();
 
   await Promise.all([loadFeed(), loadExpenses()]);
 });
@@ -125,11 +126,11 @@ function renderFeed() {
   const page = listControls ? listControls.paginate(rows) : { rows };
   container.innerHTML = page.rows.map(feedRowHtml).join("");
 
-  container.querySelectorAll("select.status-select").forEach((sel) => {
-    sel.addEventListener("change", (e) => updateEnquiryStatus(e.target.dataset.id, e.target.value));
+  container.querySelectorAll("[data-action='edit-enquiry']").forEach((btn) => {
+    btn.addEventListener("click", () => openEnquiryModal(allFeed.find((r) => r.id === btn.dataset.id)));
   });
-  container.querySelectorAll("[data-action]").forEach((btn) => {
-    btn.addEventListener("click", () => handleBookingAction(btn.dataset.id, btn.dataset.recordType, btn.dataset.action));
+  container.querySelectorAll("[data-action='edit-booking']").forEach((btn) => {
+    btn.addEventListener("click", () => openEditFeedBookingModal(allFeed.find((r) => r.id === btn.dataset.id && r.record_type === btn.dataset.recordType)));
   });
   container.querySelectorAll("[data-convert]").forEach((btn) => {
     btn.addEventListener("click", () => openConvertModal(btn.dataset.convert));
@@ -153,28 +154,25 @@ function feedRowHtml(r) {
 
   const sourceBadge = r.booking_source === "staff" ? `<span class="source-badge">phoned in</span>` : "";
 
+  // Every row now gets the same three actions — Edit, WhatsApp, Call. Edit
+  // is where status changes happen (enquiry status, or approve/reject/
+  // cancel for bookings) — no more inline status dropdown or separate
+  // Approve/Cancel buttons. Enquiries additionally keep "Convert to
+  // Booking" since that's a distinct action, not a status change.
   let actionsHtml = "";
   if (r.record_type === "enquiry") {
     actionsHtml = `
-      <select class="status-select" data-id="${r.id}">
-        ${Object.entries(ENQUIRY_STATUS_LABELS).map(([val, label]) =>
-          `<option value="${val}" ${val === r.status ? "selected" : ""}>${label}</option>`
-        ).join("")}
-      </select>
+      <button class="btn btn-outline-dark btn-sm" data-action="edit-enquiry" data-id="${r.id}">✏️ Edit</button>
       ${r.status !== "converted" ? `<button class="btn btn-primary btn-sm" data-convert="${r.id}">📅 Convert to Booking</button>` : ""}`;
   } else {
-    // hall_lawn_booking / hourly_booking share the same pending/approved/cancelled actions here.
-    // Payment marking, refunds, and blocks stay on the dedicated Bookings /
-    // Pool & Badminton pages — this feed is the fast call-and-decide path.
-    const actions = [];
-    if (r.status === "pending") {
-      actions.push(`<button class="btn btn-primary btn-sm" data-id="${r.id}" data-record-type="${r.record_type}" data-action="approve">✅ Approve</button>`);
-    }
-    // Reject (pending) and Cancel (approved) are the same button now.
-    if (r.status === "pending" || r.status === "approved") {
-      actions.push(`<button class="btn btn-outline-dark btn-sm" data-id="${r.id}" data-record-type="${r.record_type}" data-action="cancel">🚫 Cancel</button>`);
-    }
-    actionsHtml = actions.join("");
+    // hall_lawn_booking / hourly_booking — date/slot/facility changes still
+    // go through the dedicated Bookings / Pool & Badminton pages; this
+    // feed's Edit only covers status + payment + refund, for the fast
+    // call-and-decide path.
+    const canEdit = r.status === "pending" || r.status === "approved";
+    actionsHtml = canEdit
+      ? `<button class="btn btn-outline-dark btn-sm" data-action="edit-booking" data-id="${r.id}" data-record-type="${r.record_type}">✏️ Edit</button>`
+      : "";
   }
 
   return `
@@ -202,103 +200,149 @@ function feedRowHtml(r) {
     </div>`;
 }
 
-async function updateEnquiryStatus(id, newStatus) {
-  const row = allFeed.find((r) => r.id === id && r.record_type === "enquiry");
-  const oldStatus = row?.status;
+// ---------- Edit Booking modal (feed's fast call-and-decide path) ----------
 
-  const { error } = await supabaseClient
-    .from("enquiries")
-    .update({ status: newStatus, updated_at: new Date().toISOString() })
-    .eq("id", id);
+const FEED_STATUS_OPTIONS = {
+  pending: [["pending", "Pending"], ["approved", "Approved"], ["rejected", "Rejected"]],
+  approved: [["approved", "Approved"], ["cancelled", "Cancelled"]],
+};
 
-  if (error) {
-    alert("Couldn't update status: " + error.message);
-    return;
-  }
-
-  await writeAudit("update_enquiry_status", "enquiries", id, { from: oldStatus, to: newStatus });
-  if (row) row.status = newStatus;
-  renderFeed();
+function wireEditFeedBookingModal() {
+  const modal = document.getElementById("editFeedBookingModal");
+  document.getElementById("closeEditFeedBookingBtn").addEventListener("click", () => { modal.hidden = true; });
+  document.getElementById("editFeedBookingForm").addEventListener("submit", submitEditFeedBooking);
+  document.getElementById("editFeedBookingStatus").addEventListener("change", (e) => {
+    document.getElementById("editFeedCancelFields").hidden = e.target.value !== "cancelled";
+  });
 }
 
-async function handleBookingAction(id, recordType, action) {
+function openEditFeedBookingModal(row) {
+  if (!row) return;
+  const modal = document.getElementById("editFeedBookingModal");
+  const form = document.getElementById("editFeedBookingForm");
+  document.getElementById("editFeedBookingError").hidden = true;
+
+  form.elements["id"].value = row.id;
+  form.elements["record_type"].value = row.record_type;
+  form.elements["customer_name"].value = row.customer_name;
+  form.elements["phone"].value = row.phone; // locked — shown for reference only
+  form.elements["total_amount"].value = row.total_amount ?? "";
+  form.elements["amount_paid"].value = row.amount_paid ?? "";
+  form.elements["notes"].value = row.notes || "";
+  form.elements["cancellation_reason"].value = "";
+  form.elements["refund_status"].value = "none";
+  form.elements["refund_notes"].value = "";
+
+  const statusSelect = document.getElementById("editFeedBookingStatus");
+  const options = FEED_STATUS_OPTIONS[row.status] || [[row.status, row.status]];
+  statusSelect.innerHTML = options.map(([v, label]) => `<option value="${v}">${label}</option>`).join("");
+  statusSelect.value = row.status;
+  document.getElementById("editFeedCancelFields").hidden = true;
+
+  modal.dataset.originalStatus = row.status;
+  modal.hidden = false;
+}
+
+async function submitEditFeedBooking(e) {
+  e.preventDefault();
+  const form = e.target;
+  const data = Object.fromEntries(new FormData(form).entries());
+  const errorEl = document.getElementById("editFeedBookingError");
+  errorEl.hidden = true;
+
+  const modal = document.getElementById("editFeedBookingModal");
+  const originalStatus = modal.dataset.originalStatus;
+  const recordType = data.record_type;
   const table = recordType === "hall_lawn_booking" ? "booking_requests" : "hourly_bookings";
-  const row = allFeed.find((r) => r.id === id && r.record_type === recordType);
+  const row = allFeed.find((r) => r.id === data.id && r.record_type === recordType);
   if (!row) return;
 
-  // One button covers both the old "Reject" (pending) and "Cancel"
-  // (approved) — decided by the booking's current status, matching the same
-  // fold applied on the dedicated Bookings / Pool & Badminton pages.
-  if (action === "cancel") {
-    const isPending = row.status === "pending";
-    const reason = prompt(
-      isPending
-        ? `Decline the pending request ${row.code} for ${row.customer_name}? This cannot be undone from here.\n\nReason (staff only, optional):`
-        : `Cancel the approved booking ${row.code} for ${row.customer_name}? This frees the slot back up.\n\nReason for cancellation (staff only, optional):`,
-      ""
-    );
-    if (reason === null) return;
+  const newStatus = data.status;
+  const totalAmount = data.total_amount.trim() === "" ? null : Number(data.total_amount);
+  const amountPaid = data.amount_paid.trim() === "" ? null : Number(data.amount_paid);
 
-    if (isPending) {
-      const update = { status: "rejected", updated_at: new Date().toISOString() };
-      const { error } = await supabaseClient.from(table).update(update).eq("id", id);
-      if (error) { alert("Couldn't update this booking: " + error.message); return; }
-      await writeAudit(`reject_${recordType}`, table, id, { code: row.code });
-      row.status = "rejected";
-      renderFeed();
-      return;
-    }
-
-    const update = {
-      status: "cancelled",
-      cancellation_reason: reason.trim() || null,
-      cancelled_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    const { error } = await supabaseClient.from(table).update(update).eq("id", id);
-    if (error) { alert("Couldn't cancel this booking: " + error.message); return; }
-    await writeAudit(`cancel_${recordType}`, table, id, { code: row.code, reason: update.cancellation_reason });
-    row.status = "cancelled";
-    renderFeed();
+  if (totalAmount != null && (!Number.isFinite(totalAmount) || totalAmount < 0)) {
+    errorEl.textContent = "Total amount must be 0 or more.";
+    errorEl.hidden = false;
+    return;
+  }
+  if (amountPaid != null && (!Number.isFinite(amountPaid) || amountPaid < 0)) {
+    errorEl.textContent = "Amount paid must be 0 or more.";
+    errorEl.hidden = false;
+    return;
+  }
+  if (totalAmount != null && amountPaid != null && amountPaid > totalAmount) {
+    errorEl.textContent = "Amount paid can't be more than the total amount.";
+    errorEl.hidden = false;
+    return;
+  }
+  if (newStatus === "approved" && originalStatus === "pending" && totalAmount == null) {
+    errorEl.textContent = "Enter a total amount before approving this booking.";
+    errorEl.hidden = false;
     return;
   }
 
-  if (action === "approve") {
-    // Both Hall/Lawn and Pool/Badminton now allow Partial (advance) payment.
-    const entry = await promptPaymentEntry({
-      allowPartial: true,
-      label: `Approve ${row.code} for ${row.customer_name}`,
-    });
-    if (!entry) return;
+  let paymentStatus = row.payment_status;
+  if (totalAmount != null || amountPaid != null) {
+    const t = totalAmount ?? row.total_amount ?? 0;
+    const p = amountPaid ?? row.amount_paid ?? 0;
+    paymentStatus = p >= t && t > 0 ? "received" : p > 0 ? "partial" : "unpaid";
+  }
 
-    const update = {
-      status: "approved",
-      total_amount: entry.total_amount,
-      amount_paid: entry.amount_paid,
-      payment_status: entry.payment_status,
-      approved_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    update.approved_by = user.id;
+  const update = {
+    customer_name: data.customer_name.trim(),
+    notes: data.notes?.trim() || null,
+    status: newStatus,
+    total_amount: totalAmount,
+    amount_paid: amountPaid,
+    payment_status: paymentStatus,
+    updated_at: new Date().toISOString(),
+  };
 
-    const { error } = await supabaseClient.from(table).update(update).eq("id", id);
-    if (error) {
-      alert(
-        error.message?.includes("duplicate key") || error.code === "23505"
-          ? "That slot is already approved for another booking on this date."
-          : error.message?.includes("Capacity exceeded") || error.message?.includes("Exclusive booking conflicts")
-          ? "Can't approve — this would exceed capacity or conflicts with another approved booking. " + error.message
-          : "Couldn't approve this booking: " + error.message
-      );
+  let auditAction = `edit_${recordType}`;
+  if (newStatus !== originalStatus) {
+    if (newStatus === "approved") {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      update.approved_by = user.id;
+      update.approved_at = new Date().toISOString();
+      auditAction = `approve_${recordType}`;
+    } else if (newStatus === "rejected") {
+      auditAction = `reject_${recordType}`;
+    } else if (newStatus === "cancelled") {
+      update.cancellation_reason = data.cancellation_reason?.trim() || null;
+      update.cancelled_at = new Date().toISOString();
+      auditAction = `cancel_${recordType}`;
+    }
+  }
+
+  if (newStatus === "cancelled") {
+    const refundStatus = data.refund_status || "none";
+    if (!["none", "partial", "full"].includes(refundStatus)) {
+      errorEl.textContent = "Refund status must be none, partial, or full.";
+      errorEl.hidden = false;
       return;
     }
+    update.cancellation_reason = data.cancellation_reason?.trim() || null;
+    update.refund_status = refundStatus;
+    update.refund_notes = refundStatus === "none" ? null : (data.refund_notes?.trim() || null);
+  }
 
-    await writeAudit(`approve_${recordType}`, table, id, { code: row.code, total_amount: entry.total_amount, amount_paid: entry.amount_paid });
-    Object.assign(row, update);
-    renderFeed();
+  const { error } = await supabaseClient.from(table).update(update).eq("id", data.id);
+  if (error) {
+    errorEl.textContent =
+      error.message?.includes("duplicate key") || error.code === "23505"
+        ? "That slot is already approved for another booking on this date."
+        : error.message?.includes("Capacity exceeded") || error.message?.includes("Exclusive booking conflicts")
+        ? "Can't save — this would exceed capacity or conflicts with another approved booking. " + error.message
+        : "Couldn't save changes: " + error.message;
+    errorEl.hidden = false;
     return;
   }
+
+  await writeAudit(auditAction, table, data.id, { code: row.code, status: newStatus });
+  Object.assign(row, update);
+  modal.hidden = true;
+  renderFeed();
 }
 
 // ---------- Add Booking modal ----------
@@ -460,12 +504,31 @@ function wireAddEnquiryModal() {
   document.getElementById("enquiryForm2").addEventListener("submit", submitEnquiryModal);
 }
 
-function openEnquiryModal() {
+// Called with no argument to Add a new enquiry, or with a feed row to Edit
+// one — status is only shown/editable in Edit mode (a new enquiry always
+// starts as "new").
+function openEnquiryModal(row) {
   const modal = document.getElementById("enquiryModal");
   const form = document.getElementById("enquiryForm2");
   form.reset();
-  document.getElementById("enquiryModalTitle").textContent = "Add Enquiry";
-  form.elements["id"].value = "";
+  const statusWrap = document.getElementById("enquiryStatusFieldWrap");
+
+  if (row) {
+    document.getElementById("enquiryModalTitle").textContent = "Edit Enquiry";
+    form.elements["id"].value = row.id;
+    form.elements["customer_name"].value = row.customer_name;
+    form.elements["phone"].value = row.phone;
+    form.elements["email"].value = row.email || "";
+    form.elements["facility_id"].value = row.facility_id || "";
+    form.elements["preferred_date"].value = row.activity_date || "";
+    form.elements["message"].value = row.notes || "";
+    form.elements["status"].value = row.status || "new";
+    statusWrap.hidden = false;
+  } else {
+    document.getElementById("enquiryModalTitle").textContent = "Add Enquiry";
+    form.elements["id"].value = "";
+    statusWrap.hidden = true;
+  }
   modal.hidden = false;
 }
 
@@ -486,6 +549,35 @@ async function submitEnquiryModal(e) {
   const submitBtn = form.querySelector("button[type=submit]");
   submitBtn.disabled = true;
   submitBtn.textContent = "Saving...";
+
+  if (data.id) {
+    // Editing an existing enquiry — status changes now happen here instead
+    // of the old inline per-row dropdown.
+    const update = {
+      customer_name: data.customer_name.trim(),
+      phone: data.phone.trim(),
+      email: data.email?.trim() || null,
+      facility_id: data.facility_id || null,
+      preferred_date: data.preferred_date || null,
+      guests: data.guests ? Number(data.guests) : null,
+      message: data.message?.trim() || null,
+      status: data.status,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabaseClient.from("enquiries").update(update).eq("id", data.id);
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Save Enquiry";
+
+    if (error) {
+      alert("Couldn't save changes: " + error.message);
+      return;
+    }
+    await writeAudit("edit_enquiry", "enquiries", data.id, { status: data.status });
+    document.getElementById("enquiryModal").hidden = true;
+    await loadFeed();
+    return;
+  }
 
   // Phoned-in enquiry — goes through the same submit_enquiry() path the
   // public site uses, so it gets a real enquiry code and the same validation.

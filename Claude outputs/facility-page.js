@@ -400,22 +400,10 @@ async function submitBooking(e, config) {
   }
   // Pool is capacity-based (shared, per-guest) — catch an over-capacity
   // guest count before it ever reaches the server, so the customer gets a
-  // clear reason instead of a generic booking-failure message. Exclusive
-  // mode doesn't raise the room's actual capacity — it only blocks other
-  // bookings from sharing the slot — so it still needs to be checked, just
-  // against the facility's raw capacity rather than "spots left" (which is
-  // a shared-mode concept and may not reflect an exclusive booking).
-  if (config.showModeAndGuests && selectedSlot.type === "hourly") {
+  // clear reason instead of a generic booking-failure message.
+  if (config.showModeAndGuests && selectedSlot.type === "hourly" && data.mode !== "exclusive") {
     const requestedGuests = Number(data.guests || 1);
-    if (data.mode === "exclusive") {
-      if (selectedSlot.capacity != null && requestedGuests > selectedSlot.capacity) {
-        showFormError(
-          "bookFormError",
-          `This facility's capacity is ${selectedSlot.capacity} guests — please reduce the number of guests or choose shared mode instead.`
-        );
-        return;
-      }
-    } else if (selectedSlot.remaining != null && requestedGuests > selectedSlot.remaining) {
+    if (selectedSlot.remaining != null && requestedGuests > selectedSlot.remaining) {
       showFormError(
         "bookFormError",
         `Only ${selectedSlot.remaining} guest spot${selectedSlot.remaining === 1 ? "" : "s"} left for this hour — please reduce the number of guests or choose another slot.`

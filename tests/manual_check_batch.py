@@ -187,7 +187,9 @@ def run():
         check("Manager Feed has the Convert-to-Booking modal", has_convert_modal)
         page.close()
 
-        # --- Check 7 (2026-09-03 batch): Edit action hidden on approved bookings ---
+        # --- Check 7 (2026-09-03 batch, revised): row actions are exactly
+        # Edit/WhatsApp/Call for pending & approved bookings, WhatsApp/Call
+        # only for terminal ones (rejected/cancelled have nothing to edit) ---
         page = browser.new_page()
         page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
             content_type="application/javascript", body=SUPABASE_STUB))
@@ -204,9 +206,16 @@ def run():
                            booking_code: 'HB-2', facility_id: 'pool', booking_date: '2026-09-05', start_time: '17:00', end_time: '18:00' }];
             return bookingRowHtml(allHourly[0]);
         }""")
-        check("Pool/Badminton: Edit button hidden on an approved booking", 'data-action="edit"' not in approved_html)
-        check("Pool/Badminton: Cancel + Update Payment still shown on an approved booking", 'data-action="cancel"' in approved_html and 'data-action="update_payment"' in approved_html)
+        cancelled_html = page.evaluate("""() => {
+            return bookingRowHtml({ id: 'b3', status: 'cancelled', payment_status: 'partial', customer_name: 'C', phone: '9846718106',
+                                     booking_code: 'HB-3', facility_id: 'pool', booking_date: '2026-09-05', start_time: '17:00', end_time: '18:00' });
+        }""")
+        check("Pool/Badminton: Edit button (now) shown on an approved booking", 'data-action="edit"' in approved_html)
+        check("Pool/Badminton: no separate Cancel/Update Payment/Refund buttons remain — only Edit/WhatsApp/Call",
+              'data-action="cancel"' not in approved_html and 'data-action="update_payment"' not in approved_html and 'data-action="refund"' not in approved_html)
         check("Pool/Badminton: Edit button still shown on a pending booking", 'data-action="edit"' in pending_html)
+        check("Pool/Badminton: Edit button hidden on a cancelled (terminal) booking — only WhatsApp/Call left",
+              'data-action="edit"' not in cancelled_html)
         page.close()
 
         page = browser.new_page()
@@ -219,7 +228,23 @@ def run():
             return bookingRowHtml({ id: 'c1', status: 'approved', payment_status: 'partial', customer_name: 'C', phone: '9846718106',
                                      booking_code: 'BK-1', facility_id: 'lawn', booking_date: '2026-09-05', slot: 'evening' });
         }""")
-        check("Hall/Lawn: Edit button hidden on an approved booking", 'data-action="edit"' not in hall_approved_html)
+        check("Hall/Lawn: Edit button (now) shown on an approved booking", 'data-action="edit"' in hall_approved_html)
+        check("Hall/Lawn: WhatsApp and Call links both present on the row",
+              'wa.me' in hall_approved_html and 'tel:' in hall_approved_html)
+
+        # Edit modal: phone field is disabled (locked), status select only
+        # offers Approved/Cancelled from an 'approved' booking.
+        modal_state = page.evaluate("""() => {
+            openEditBookingModal({ id: 'c1', status: 'approved', payment_status: 'partial', customer_name: 'C', phone: '9846718106',
+                                    booking_code: 'BK-1', facility_id: 'lawn', booking_date: '2026-09-05', slot: 'evening',
+                                    total_amount: 5000, amount_paid: 2000 });
+            const phone = document.querySelector('#editBookingForm [name=phone]');
+            const statusOpts = Array.from(document.getElementById('editBookingStatus').options).map(o => o.value);
+            return { phoneDisabled: phone.disabled, statusOpts };
+        }""")
+        check("Hall/Lawn Edit modal: phone field is disabled/locked", modal_state["phoneDisabled"])
+        check("Hall/Lawn Edit modal: an approved booking's status select only offers Approved/Cancelled",
+              modal_state["statusOpts"] == ["approved", "cancelled"])
         page.close()
 
         # --- Check 8 (2026-09-03 batch): Partial payment now allowed for Pool/Badminton ---
@@ -364,7 +389,7 @@ def run():
               submitted is not None and submitted.get("p_source") == "phone")
         page.close()
 
-        # --- Checks (this batch): Reject folded into Cancel, block-toggle panel, list-controls search/date/pagination ---
+        # --- Checks (this batch): status/payment/refund all folded into Edit, block-toggle panel, list-controls search/date/pagination ---
         page = browser.new_page()
         page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
             content_type="application/javascript", body=SUPABASE_STUB))
@@ -375,10 +400,50 @@ def run():
             customer_name: 'P', phone: '9846718106', booking_code: 'BK-2', facility_id: 'lawn', booking_date: '2026-09-05', slot: 'evening' })""")
         approved_html2 = page.evaluate("""() => bookingRowHtml({ id: 'a1', status: 'approved', payment_status: 'partial',
             customer_name: 'A', phone: '9846718106', booking_code: 'BK-3', facility_id: 'lawn', booking_date: '2026-09-05', slot: 'evening' })""")
-        check("Bookings: no separate Reject button — pending row's stop-action is the single Cancel button",
-              'data-action="reject"' not in pending_html and 'data-action="cancel"' in pending_html)
-        check("Bookings: approved row also uses the single Cancel button (no separate Reject)",
-              'data-action="reject"' not in approved_html2 and 'data-action="cancel"' in approved_html2)
+        rejected_html = page.evaluate("""() => bookingRowHtml({ id: 'r1', status: 'rejected', payment_status: 'unpaid',
+            customer_name: 'R', phone: '9846718106', booking_code: 'BK-4', facility_id: 'lawn', booking_date: '2026-09-05', slot: 'evening' })""")
+        check("Bookings: no separate Reject/Cancel/Refund/Update-Payment buttons — a pending row's only action is Edit",
+              'data-action="reject"' not in pending_html and 'data-action="cancel"' not in pending_html
+              and 'data-action="refund"' not in pending_html and 'data-action="update_payment"' not in pending_html
+              and 'data-action="edit"' in pending_html)
+        check("Bookings: approved row also has just the single Edit action",
+              'data-action="reject"' not in approved_html2 and 'data-action="cancel"' not in approved_html2
+              and 'data-action="edit"' in approved_html2)
+        check("Bookings: a rejected (terminal) row has no Edit button", 'data-action="edit"' not in rejected_html)
+
+        # Edit modal: approving a pending booking without a total amount is blocked with an inline error.
+        # (submitEditBooking looks the booking up in the module-level allBookings array, so it has to be seeded first.)
+        approve_no_amount = page.evaluate("""() => {
+            allBookings = [{ id: 'p1', status: 'pending', payment_status: 'unpaid', customer_name: 'P', phone: '9846718106',
+                             booking_code: 'BK-2', facility_id: 'lawn', booking_date: '2026-09-05', slot: 'evening' }];
+            openEditBookingModal(allBookings[0]);
+            document.getElementById('editBookingStatus').value = 'approved';
+            document.querySelector('#editBookingForm [name=total_amount]').value = '';
+            document.getElementById('editBookingForm').dispatchEvent(new Event('submit', { cancelable: true }));
+            const err = document.getElementById('editBookingError');
+            return { errorShown: !err.hidden, errorText: err.textContent };
+        }""")
+        check("Bookings Edit modal: approving without a total amount shows an inline error, doesn't silently save",
+              approve_no_amount["errorShown"] and "total amount" in approve_no_amount["errorText"].lower())
+
+        # Cancelling reveals the refund fields; picking anything else keeps them hidden.
+        cancel_fields_toggle = page.evaluate("""() => {
+            openEditBookingModal({ id: 'a1', status: 'approved', payment_status: 'partial', customer_name: 'A', phone: '9846718106',
+                                    booking_code: 'BK-3', facility_id: 'lawn', booking_date: '2026-09-05', slot: 'evening',
+                                    total_amount: 5000, amount_paid: 2500 });
+            const sel = document.getElementById('editBookingStatus');
+            const hiddenBefore = document.getElementById('editCancelFields').hidden;
+            sel.value = 'cancelled';
+            sel.dispatchEvent(new Event('change'));
+            const hiddenAfterCancelled = document.getElementById('editCancelFields').hidden;
+            sel.value = 'approved';
+            sel.dispatchEvent(new Event('change'));
+            const hiddenAfterApproved = document.getElementById('editCancelFields').hidden;
+            document.getElementById('editBookingModal').hidden = true; // close it — leaving it open blocks the next clicks on this page
+            return { hiddenBefore, hiddenAfterCancelled, hiddenAfterApproved };
+        }""")
+        check("Bookings Edit modal: refund/cancellation-reason fields only appear when status is set to Cancelled",
+              cancel_fields_toggle["hiddenBefore"] and not cancel_fields_toggle["hiddenAfterCancelled"] and cancel_fields_toggle["hiddenAfterApproved"])
 
         panel_hidden_initially = page.eval_on_selector("#blocksPanel", "el => el.hidden")
         page.click("#toggleBlocksBtn")
@@ -441,6 +506,127 @@ def run():
               lc_search_direct["bySearch"] == ["Alice"])
         check("list-controls.js: date-from filters out rows earlier than the chosen date",
               lc_search_direct["byDate"] == ["Bob"])
+        page.close()
+
+        # --- Checks (this batch): exclusive-mode guest count validated client-side too ---
+        page = browser.new_page()
+        excl_stub = SUPABASE_STUB.replace(
+            "if (name === 'get_facility_slots') {",
+            """if (name === 'get_facility_slots') {
+          if (params.p_facility_id === 'pool') {
+            return { data: { type: 'hourly', bookingModel: 'capacity', slots: [
+              { start: '06:00', end: '07:00', status: 'Available', remaining: 25, capacity: 25 }
+            ] }, error: null };
+          }"""
+        )
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=excl_stub))
+        dialogs_excl = []
+        page.on("dialog", lambda d: (dialogs_excl.append(d.message), d.dismiss()))
+        page.goto(f"file://{ROOT}/pool.html")
+        page.wait_for_timeout(300)
+        page.fill("#pageDate", "2099-01-01")
+        page.click("#pageAvailabilityForm button[type=submit]")
+        page.wait_for_timeout(300)
+        page.click("#pageSlotResult [data-slot-index='0']")
+        page.wait_for_timeout(200)
+        page.fill("#pageBookingForm [name=customer_name]", "Test User")
+        page.fill("#bookPhone", "9846718106")
+        page.select_option("#pageBookingForm [name=mode]", "exclusive")
+        page.fill("#pageBookingForm [name=guests]", "26")
+        page.wait_for_timeout(3100)
+        page.click("#pageBookingForm button[type=submit]")
+        page.wait_for_timeout(200)
+        err_text_excl = page.locator("#bookFormError").inner_text() if page.locator("#bookFormError").is_visible() else ""
+        check("Pool: 26 guests + exclusive mode on a 25-capacity slot is now blocked client-side with a guest-count message",
+              "capacity" in err_text_excl.lower() and len(dialogs_excl) == 0)
+        page.close()
+
+        # --- Checks (this batch): Dashboard tiles show per-facility booking/enquiry counts ---
+        page = browser.new_page()
+        counts_stub = SUPABASE_STUB.replace(
+            "return { data: null, error: null };\n      },",
+            """if (name === 'get_dashboard_facility_counts') {
+            return { data: {
+              club_house: { bookings_pending: 2, enquiries_open: 1 },
+              pool: { bookings_pending: 0, enquiries_open: 0 },
+              badminton: { bookings_pending: 1, enquiries_open: 3 },
+            }, error: null };
+          }
+          return { data: null, error: null };
+        },"""
+        )
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=counts_stub))
+        page.add_init_script("window.__STAFF_ROLE__ = 'admin';")
+        page.goto(f"file://{ROOT}/admin-v2/dashboard.html")
+        page.wait_for_timeout(400)
+        counts_state = page.evaluate("""() => {
+            const clubHouse = document.querySelector('[data-facility-counts=club_house]');
+            const pool = document.querySelector('[data-facility-counts=pool]');
+            const badminton = document.querySelector('[data-facility-counts=badminton]');
+            return { clubHouseHtml: clubHouse.innerHTML, clubHouseHidden: clubHouse.hidden,
+                     poolHtml: pool.innerHTML, badmintonHtml: badminton.innerHTML };
+        }""")
+        check("Dashboard: Club House tile shows its pending-booking and open-enquiry counts, and is unhidden",
+              "2" in counts_state["clubHouseHtml"] and "1" in counts_state["clubHouseHtml"] and not counts_state["clubHouseHidden"])
+        check("Dashboard: Pool tile with zero of everything shows an 'All clear' chip", "All clear" in counts_state["poolHtml"])
+        check("Dashboard: Badminton tile shows its own (different) counts", "1" in counts_state["badmintonHtml"] and "3" in counts_state["badmintonHtml"])
+        page.close()
+
+        # --- Checks (this batch): Manager Feed — booking rows simplified to Edit/WhatsApp/Call, enquiry rows lose the inline status dropdown ---
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.add_init_script("window.__STAFF_ROLE__ = 'admin';")
+        page.goto(f"file://{ROOT}/admin-v2/manager-feed.html")
+        page.wait_for_timeout(400)
+        feed_rows_state = page.evaluate("""() => {
+            const pendingBooking = feedRowHtml({ record_type: 'hall_lawn_booking', id: 'fb1', status: 'pending', payment_status: 'unpaid',
+                customer_name: 'X', phone: '9846718106', code: 'BK-9', facility_id: 'lawn', activity_date: '2026-09-05', slot: 'evening', created_at: new Date().toISOString() });
+            const approvedBooking = feedRowHtml({ record_type: 'hourly_booking', id: 'fb2', status: 'approved', payment_status: 'partial',
+                customer_name: 'Y', phone: '9846718106', code: 'HB-9', facility_id: 'pool', activity_date: '2026-09-05', start_time: '10:00', end_time: '11:00', created_at: new Date().toISOString() });
+            const cancelledBooking = feedRowHtml({ record_type: 'hall_lawn_booking', id: 'fb3', status: 'cancelled', payment_status: 'partial',
+                customer_name: 'Z', phone: '9846718106', code: 'BK-8', facility_id: 'lawn', activity_date: '2026-09-05', slot: 'evening', created_at: new Date().toISOString() });
+            const enquiryRow = feedRowHtml({ record_type: 'enquiry', id: 'e1', status: 'new',
+                customer_name: 'Q', phone: '9846718106', code: 'ENQ-9', facility_id: null, activity_date: '2026-09-05', created_at: new Date().toISOString() });
+            return { pendingBooking, approvedBooking, cancelledBooking, enquiryRow };
+        }""")
+        check("Manager Feed: pending booking row has Edit but no Approve/Cancel buttons",
+              'data-action="edit-booking"' in feed_rows_state["pendingBooking"] and 'data-action="approve"' not in feed_rows_state["pendingBooking"] and 'data-action="cancel"' not in feed_rows_state["pendingBooking"])
+        check("Manager Feed: approved booking row also has Edit (not hidden after approval)",
+              'data-action="edit-booking"' in feed_rows_state["approvedBooking"])
+        check("Manager Feed: cancelled (terminal) booking row has no Edit button",
+              'data-action="edit-booking"' not in feed_rows_state["cancelledBooking"])
+        check("Manager Feed: enquiry row has no inline status <select> anymore",
+              "status-select" not in feed_rows_state["enquiryRow"] and "<select" not in feed_rows_state["enquiryRow"])
+        check("Manager Feed: enquiry row still has an Edit button and Convert-to-Booking button",
+              'data-action="edit-enquiry"' in feed_rows_state["enquiryRow"] and "Convert to Booking" in feed_rows_state["enquiryRow"])
+        page.close()
+
+        # --- Checks (this batch): Enquiries page — inline status dropdown removed, status now lives in the Edit modal ---
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.add_init_script("window.__STAFF_ROLE__ = 'admin';")
+        page.goto(f"file://{ROOT}/admin-v2/enquiries.html")
+        page.wait_for_timeout(400)
+        enquiry_row_html = page.evaluate("""() => rowHtml({ id: 'eq1', status: 'contacted', customer_name: 'N', phone: '9846718106',
+            enquiry_code: 'ENQ-1', facility_id: 'pool', created_at: new Date().toISOString() })""")
+        check("Enquiries page: row has no inline status <select> anymore", "status-select" not in enquiry_row_html)
+        status_field_state = page.evaluate("""() => {
+            openEnquiryModal({ id: 'eq1', status: 'contacted', customer_name: 'N', phone: '9846718106', enquiry_code: 'ENQ-1' });
+            const wrap = document.getElementById('enquiryStatusFieldWrap');
+            const val = document.querySelector('#enquiryForm2 [name=status]').value;
+            return { hidden: wrap.hidden, val };
+        }""")
+        check("Enquiries Edit modal: status field is shown and pre-filled with the enquiry's current status",
+              not status_field_state["hidden"] and status_field_state["val"] == "contacted")
+        add_mode_state = page.evaluate("""() => {
+            openEnquiryModal(null);
+            return document.getElementById('enquiryStatusFieldWrap').hidden;
+        }""")
+        check("Enquiries Add modal: status field stays hidden when adding a brand-new enquiry", add_mode_state)
         page.close()
 
         browser.close()

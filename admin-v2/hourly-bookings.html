@@ -147,7 +147,9 @@
     <div id="hourlyPager" class="pager-row" style="margin-top:12px; text-align:center;"></div>
   </div>
 
-  <!-- Edit Booking modal (date/time/guests/mode — not payment or status) -->
+  <!-- Edit Booking modal — status (approve/reject/cancel), payment and
+       (once cancelled) refund all live here now. Phone is shown but
+       locked. -->
   <div id="editBookingModal" class="modal-backdrop" hidden>
     <div class="modal-card">
       <button class="modal-close" id="closeEditBookingBtn" aria-label="Close">&times;</button>
@@ -159,8 +161,8 @@
           <label>Name*
             <input type="text" name="customer_name" required minlength="2">
           </label>
-          <label>Phone*
-            <input type="tel" name="phone" required inputmode="numeric">
+          <label>Phone
+            <input type="tel" name="phone" class="locked-field" disabled>
           </label>
         </div>
         <div class="modal-row">
@@ -184,12 +186,46 @@
             <input type="number" name="guests" min="1">
           </label>
         </div>
-        <label id="editModeFieldWrap">Booking mode
-          <select name="mode">
-            <option value="shared">Shared</option>
-            <option value="exclusive">Exclusive</option>
-          </select>
-        </label>
+        <div class="modal-row">
+          <label id="editModeFieldWrap">Booking mode
+            <select name="mode">
+              <option value="shared">Shared</option>
+              <option value="exclusive">Exclusive</option>
+            </select>
+          </label>
+          <label>Status
+            <select name="status" id="editBookingStatus"></select>
+          </label>
+        </div>
+        <div class="modal-row">
+          <label>Total amount (₹)
+            <input type="number" name="total_amount" min="0" step="1" inputmode="decimal">
+          </label>
+          <label>Amount paid (₹)
+            <input type="number" name="amount_paid" min="0" step="1" inputmode="decimal">
+          </label>
+        </div>
+
+        <div id="editCancelFields" hidden>
+          <hr style="margin:14px 0;">
+          <label>Reason for cancellation (staff only)
+            <input type="text" name="cancellation_reason">
+          </label>
+          <div class="modal-row">
+            <label>Refund status
+              <select name="refund_status">
+                <option value="none">None</option>
+                <option value="partial">Partial</option>
+                <option value="full">Full</option>
+              </select>
+            </label>
+            <label>Refund notes
+              <input type="text" name="refund_notes" placeholder="e.g. ₹5000 refunded via UPI on 12 Sep">
+            </label>
+          </div>
+        </div>
+
+        <p id="editBookingError" class="form-error" hidden></p>
         <div class="modal-actions">
           <button type="submit" class="btn btn-primary">Save Changes</button>
         </div>
@@ -207,9 +243,9 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="../js/supabase-client.js"></script>
-<script src="js/admin-auth.js"></script>
-<script src="js/list-controls.js"></script>
-<script src="js/hourly-bookings.js"></script>
+<script src="../js/supabase-client.js?v=20260903"></script>
+<script src="js/admin-auth.js?v=20260903"></script>
+<script src="js/list-controls.js?v=20260903"></script>
+<script src="js/hourly-bookings.js?v=20260903"></script>
 </body>
 </html>

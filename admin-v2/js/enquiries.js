@@ -91,9 +91,6 @@ function renderList() {
   const page = listControls ? listControls.paginate(rows) : { rows };
   container.innerHTML = page.rows.map(rowHtml).join("");
 
-  container.querySelectorAll("select.status-select").forEach(sel => {
-    sel.addEventListener("change", (e) => updateStatus(e.target.dataset.id, e.target.value));
-  });
   container.querySelectorAll("[data-edit]").forEach(btn => {
     btn.addEventListener("click", () => openEnquiryModal(allEnquiries.find(e => e.id === btn.dataset.edit)));
   });
@@ -124,48 +121,18 @@ function rowHtml(e) {
         ${e.message ? `<p class="enquiry-message">${escapeHtml(e.message)}</p>` : ""}
       </div>
       <div class="enquiry-card-actions">
-        <select class="status-select" data-id="${e.id}">
-          ${Object.entries(STATUS_LABELS).map(([val, label]) =>
-            `<option value="${val}" ${val === e.status ? "selected" : ""}>${label}</option>`
-          ).join("")}
-        </select>
-        ${e.status !== "converted" ? `<button class="btn btn-primary btn-sm" data-convert="${e.id}">📅 Convert to Booking</button>` : ""}
         <button class="btn btn-outline-dark btn-sm" data-edit="${e.id}">✏️ Edit</button>
+        ${e.status !== "converted" ? `<button class="btn btn-primary btn-sm" data-convert="${e.id}">📅 Convert to Booking</button>` : ""}
         <a class="btn btn-outline-dark btn-sm" href="${waLink}" target="_blank" rel="noopener">💬 WhatsApp</a>
         <a class="btn btn-outline-dark btn-sm" href="tel:${e.phone}">📞 Call</a>
       </div>
     </div>`;
 }
 
-async function updateStatus(id, newStatus) {
-  const enquiry = allEnquiries.find(e => e.id === id);
-  const oldStatus = enquiry?.status;
-
-  const { error } = await supabaseClient
-    .from("enquiries")
-    .update({ status: newStatus, updated_at: new Date().toISOString() })
-    .eq("id", id);
-
-  if (error) {
-    alert("Couldn't update status: " + error.message);
-    return;
-  }
-
-  // Best-effort audit trail — RLS (audit_log_staff_insert) requires actor_id = auth.uid().
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  await supabaseClient.from("audit_log").insert({
-    actor_id: user.id,
-    action: "update_enquiry_status",
-    table_name: "enquiries",
-    record_id: id,
-    details: { from: oldStatus, to: newStatus },
-  });
-
-  if (enquiry) enquiry.status = newStatus;
-  renderList();
-}
-
 // ---------- Add / Edit Enquiry modal ----------
+// Status changes now happen here (via the Edit button) instead of the old
+// inline per-row dropdown — one less thing on each row, one place to change
+// an enquiry's state.
 
 function wireEnquiryModal() {
   const modal = document.getElementById("enquiryModal");
@@ -186,6 +153,7 @@ function openEnquiryModal(enquiry) {
   form.reset();
   document.getElementById("enquiryModalTitle").textContent = enquiry ? "Edit Enquiry" : "Add Enquiry";
   form.elements["id"].value = enquiry?.id || "";
+  const statusWrap = document.getElementById("enquiryStatusFieldWrap");
   if (enquiry) {
     form.elements["customer_name"].value = enquiry.customer_name || "";
     form.elements["phone"].value = enquiry.phone || "";
@@ -194,6 +162,10 @@ function openEnquiryModal(enquiry) {
     form.elements["preferred_date"].value = enquiry.preferred_date || "";
     form.elements["guests"].value = enquiry.guests || "";
     form.elements["message"].value = enquiry.message || "";
+    form.elements["status"].value = enquiry.status || "new";
+    statusWrap.hidden = false;
+  } else {
+    statusWrap.hidden = true;
   }
   modal.hidden = false;
 }
@@ -228,6 +200,7 @@ async function submitEnquiryModal(e) {
         preferred_date: data.preferred_date || null,
         guests: data.guests ? Number(data.guests) : null,
         message: data.message?.trim() || null,
+        status: data.status,
         updated_at: new Date().toISOString(),
       })
       .eq("id", data.id);

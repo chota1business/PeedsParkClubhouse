@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Calendar Feed — PeedsPark Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="container admin-header-inner">
+    <a href="dashboard.html" class="brand">
+      <img src="../images/peedspark-logo.jpg" alt="PeedsPark Club House logo">
+      <div><strong>Peeds Park</strong><span>Admin</span></div>
+    </a>
+    <div class="admin-user">
+      <span id="staffName">Loading…</span>
+      <span id="staffRole" class="role-badge"></span>
+      <button id="logoutBtn" class="btn btn-outline-dark">Log Out</button>
+    </div>
+  </div>
+</header>
+
+<main class="container admin-main">
+  <div id="notAuthorised" hidden class="policy-card" style="border-left:6px solid var(--coral); max-width:520px; margin:60px auto;">
+    <h3>Not authorised</h3>
+    <p>The Google Calendar feed is Admin only.</p>
+    <a class="btn btn-primary" href="dashboard.html">Back to Dashboard</a>
+  </div>
+
+  <div id="pageContent" hidden>
+    <div class="page-head">
+      <a href="dashboard.html" class="back-link">&larr; Dashboard</a>
+      <h2>📅 Google Calendar Feed</h2>
+    </div>
+
+    <div class="policy-card" style="max-width:640px; margin-bottom:24px;">
+      <p style="margin-top:0;">Subscribe to a link below in Google Calendar to see <strong>approved</strong> AC Hall, Non-AC Hall and Lawn bookings on your calendar automatically.</p>
+      <ul style="margin:10px 0 0; padding-left:20px; line-height:1.7;">
+        <li>Pool and Badminton bookings are not included.</li>
+        <li>Only bookings you've <strong>approved</strong> show up — pending/rejected/cancelled ones don't.</li>
+        <li><strong>Google decides how often it refreshes</strong> a subscribed calendar — usually every few hours, sometimes up to a day. There's no way to make it update instantly; for that, keep using the Bookings page here.</li>
+        <li>Anyone with a link below can see the booking details it contains (names, phone numbers, guest counts) without logging in, so don't share it outside your own calendar. Revoke a link any time and it stops working immediately.</li>
+      </ul>
+    </div>
+
+    <button id="generateBtn" class="btn btn-primary">+ Generate new link</button>
+    <p id="generateError" class="form-note-error" hidden></p>
+
+    <div id="newLinkBanner" hidden class="policy-card" style="max-width:640px; margin-top:18px; border-left:6px solid var(--teal);">
+      <p style="margin-top:0;"><strong>New link created</strong> — copy it now, or come back to this page any time to copy it again:</p>
+      <p style="word-break:break-all; background:#F4F4F4; padding:10px 12px; border-radius:8px; font-family:monospace; font-size:0.85rem;" id="newLinkUrl"></p>
+      <button id="copyNewBtn" class="btn btn-outline-dark">Copy link</button>
+      <span id="copiedNote" class="muted" style="display:none; margin-left:8px;">Copied ✓</span>
+      <hr style="margin:18px 0; border:none; border-top:1px solid #eee;">
+      <p style="font-weight:700; margin-bottom:6px;">How to add it in Google Calendar</p>
+      <ol style="padding-left:20px; line-height:1.8; margin:0;">
+        <li>Open Google Calendar on desktop (calendar.google.com)</li>
+        <li>Under "Other calendars" click the <strong>+</strong> → <strong>From URL</strong></li>
+        <li>Paste the link above → <strong>Add calendar</strong></li>
+      </ol>
+    </div>
+
+    <div style="margin-top:32px;">
+      <h3 style="font-size:1.05rem;">Your active links</h3>
+      <div id="activeLinksList"><p class="muted" style="padding:10px 0;">Loading…</p></div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../js/supabase-client.js"></script>
+<script src="js/admin-auth.js"></script>
+<script src="js/calendar-feed.js"></script>
+</body>
+</html>

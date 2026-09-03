@@ -213,11 +213,83 @@
           <input type="number" name="guests" min="1">
         </label>
       </div>
+      <label id="enquiryStatusFieldWrap" hidden>Status
+        <select name="status">
+          <option value="new">New</option>
+          <option value="contacted">Contacted</option>
+          <option value="follow_up">Follow-up</option>
+          <option value="converted">Converted</option>
+          <option value="lost">Lost</option>
+        </select>
+      </label>
       <label>Message
         <textarea name="message" rows="2"></textarea>
       </label>
       <div class="modal-actions">
         <button type="submit" class="btn btn-primary">Save Enquiry</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Booking modal — the feed's fast call-and-decide path: status
+     (approve/reject/cancel), payment, and (once cancelled) refund. Date/
+     slot/facility changes still go through the dedicated Bookings /
+     Pool & Badminton pages. Phone is shown but locked. -->
+<div id="editFeedBookingModal" class="modal-backdrop" hidden>
+  <div class="modal-card">
+    <button class="modal-close" id="closeEditFeedBookingBtn" aria-label="Close">&times;</button>
+    <h3>Edit Booking</h3>
+    <form id="editFeedBookingForm">
+      <input type="hidden" name="id">
+      <input type="hidden" name="record_type">
+      <div class="modal-row">
+        <label>Name*
+          <input type="text" name="customer_name" required minlength="2">
+        </label>
+        <label>Phone
+          <input type="tel" name="phone" class="locked-field" disabled>
+        </label>
+      </div>
+      <div class="modal-row">
+        <label>Status
+          <select name="status" id="editFeedBookingStatus"></select>
+        </label>
+      </div>
+      <div class="modal-row">
+        <label>Total amount (₹)
+          <input type="number" name="total_amount" min="0" step="1" inputmode="decimal">
+        </label>
+        <label>Amount paid (₹)
+          <input type="number" name="amount_paid" min="0" step="1" inputmode="decimal">
+        </label>
+      </div>
+      <label>Notes
+        <textarea name="notes" rows="2"></textarea>
+      </label>
+
+      <div id="editFeedCancelFields" hidden>
+        <hr style="margin:14px 0;">
+        <label>Reason for cancellation (staff only)
+          <input type="text" name="cancellation_reason">
+        </label>
+        <div class="modal-row">
+          <label>Refund status
+            <select name="refund_status">
+              <option value="none">None</option>
+              <option value="partial">Partial</option>
+              <option value="full">Full</option>
+            </select>
+          </label>
+          <label>Refund notes
+            <input type="text" name="refund_notes" placeholder="e.g. ₹5000 refunded via UPI on 12 Sep">
+          </label>
+        </div>
+      </div>
+
+      <p id="editFeedBookingError" class="form-error" hidden></p>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
       </div>
     </form>
   </div>
@@ -346,9 +418,9 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="../js/supabase-client.js"></script>
-<script src="js/admin-auth.js"></script>
-<script src="js/list-controls.js"></script>
-<script src="js/manager-feed.js"></script>
+<script src="../js/supabase-client.js?v=20260903"></script>
+<script src="js/admin-auth.js?v=20260903"></script>
+<script src="js/list-controls.js?v=20260903"></script>
+<script src="js/manager-feed.js?v=20260903"></script>
 </body>
 </html>
