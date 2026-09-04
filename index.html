@@ -6,7 +6,7 @@
 <title>PeedsPark Club House — Sports, Celebrations, Memories</title>
 <meta name="description" content="PeedsPark Club House, Ammancherry, Kerala — AC & Non-AC Halls, Swimming Pool, Badminton Court, Party Lawn. Book online or enquire on WhatsApp.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏡</text></svg>">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=20260904-4">
 </head>
 <body>
 
@@ -29,7 +29,7 @@
   </div>
 </header>
 
-<section id="home" class="hero hero-photo hero-home" style="background-image:url('images/background.jpeg');">
+<section id="home" class="hero hero-photo hero-home" style="background-image:url('images/lawn1.jpeg');">
   <div class="container hero-inner hero-split">
     <div class="hero-text">
       <p class="eyebrow">Ammancherry, Kerala 686561</p>
@@ -112,11 +112,60 @@
       <figure><img src="images/swimmingpool2.jpeg" alt="PeedsPark swimming pool, poolside view" loading="lazy"></figure>
       <figure><img src="images/swimmingpool3.jpeg" alt="PeedsPark swimming pool, close-up view" loading="lazy"></figure>
       <figure><img src="images/Badmintoncourtoutside.jpeg" alt="Badminton court building, outside view" loading="lazy"></figure>
-      <figure><img src="images/badminton.jpeg" alt="Badminton court building, inside view" loading="lazy"><</figure>
+      <figure><img src="images/badminton.jpeg" alt="Badminton court building, inside view" loading="lazy"></figure>
       <figure><img src="images/badminton2.jpeg" alt="Badminton court building, inside view2" loading="lazy"></figure>
       <figure><img src="images/warmup.jpeg" alt="Badminton court building, warm-up area" loading="lazy"></figure>
       <figure><img src="images/garden1.jpeg" alt="PeedsPark garden" loading="lazy"><figcaption>Garden</figcaption></figure>
     </div>
+  </div>
+</section>
+
+<section class="reviews" id="reviews">
+  <div class="container">
+    <p class="eyebrow center">What guests say</p>
+    <h2 class="center">Reviews</h2>
+    <p class="lead center">Real feedback from people who've celebrated, played and relaxed at PeedsPark.</p>
+
+    <div id="reviewsGrid" class="reviews-grid"></div>
+    <p id="reviewsEmpty" class="reviews-empty" hidden>No reviews yet — be the first to share how your visit went!</p>
+
+    <div class="reviews-cta">
+      <button type="button" id="showReviewFormBtn" class="btn btn-primary btn-lg">✍️ Write a Review</button>
+    </div>
+
+    <form id="reviewForm" class="panel-form" hidden>
+      <input type="text" id="reviewHpField" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;">
+      <label>Your name<input id="reviewName" name="customer_name" required type="text" placeholder="Your name"></label>
+      <label>Phone<input id="reviewPhone" name="phone" required type="tel" inputmode="numeric" placeholder="Your phone number"></label>
+      <p class="form-note-error" id="reviewPhoneNote" hidden></p>
+      <label>Which facility?
+        <select id="reviewFacility" name="facility_group">
+          <option value="">General visit</option>
+          <option value="ac_hall">AC Hall</option>
+          <option value="non_ac_hall">Non-AC Hall</option>
+          <option value="lawn">Party Lawn</option>
+          <option value="pool">Swimming Pool</option>
+          <option value="badminton">Badminton</option>
+        </select>
+      </label>
+      <label>Your rating
+        <div class="star-picker" id="starPicker" role="radiogroup" aria-label="Rating out of 5">
+          <button type="button" class="star-btn" data-star="1" aria-label="1 star">★</button>
+          <button type="button" class="star-btn" data-star="2" aria-label="2 stars">★</button>
+          <button type="button" class="star-btn" data-star="3" aria-label="3 stars">★</button>
+          <button type="button" class="star-btn" data-star="4" aria-label="4 stars">★</button>
+          <button type="button" class="star-btn" data-star="5" aria-label="5 stars">★</button>
+        </div>
+        <input type="hidden" id="reviewRating" name="rating" value="">
+      </label>
+      <p class="form-note-error" id="reviewRatingNote" hidden></p>
+      <label>Your review<textarea id="reviewText" name="review_text" rows="4" required placeholder="Tell us about your experience..."></textarea></label>
+      <button class="btn btn-primary btn-lg" id="reviewSubmitBtn" type="submit">Submit Review</button>
+      <p class="form-note" id="reviewFormNote">We read every review before it goes live — yours will appear here once approved.</p>
+      <p class="form-note-error" id="reviewFormError" hidden></p>
+    </form>
+
+    <div id="reviewConfirmation" class="confirmation-panel" hidden></div>
   </div>
 </section>
 
@@ -179,5 +228,7 @@
 <script src="js/supabase-client.js?v=20260903"></script>
 <script src="js/nav.js?v=20260903"></script>
 <script src="js/app.js?v=20260903"></script>
+<script src="js/gallery-lightbox.js?v=20260904"></script>
+<script src="js/reviews.js?v=20260904"></script>
 </body>
 </html>

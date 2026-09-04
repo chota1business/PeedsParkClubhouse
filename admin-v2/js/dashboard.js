@@ -27,7 +27,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("dashboardContent").hidden = false;
 
   loadFacilityCounts();
+  loadReviewsPendingCount();
 });
+
+// Pending-reviews badge on the Reviews tile — a quick nudge that
+// something's waiting in the moderation queue, same count-chip look as
+// the facility badges above but sourced directly from the reviews table
+// (no RPC needed: staff can already SELECT all reviews per RLS).
+async function loadReviewsPendingCount() {
+  const { count, error } = await supabaseClient
+    .from("reviews")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+
+  const el = document.getElementById("reviewsPendingCount");
+  if (!el) return;
+  if (error) {
+    console.error("Couldn't load pending reviews count:", error);
+    return;
+  }
+  el.innerHTML = count > 0
+    ? `<span class="count-chip">${count} review${count === 1 ? "" : "s"} pending</span>`
+    : `<span class="count-chip zero">All clear</span>`;
+  el.hidden = false;
+}
 
 // Badges on the Club House / Pool / Badminton tiles — how many pending
 // booking requests and open (not yet converted/lost) enquiries each

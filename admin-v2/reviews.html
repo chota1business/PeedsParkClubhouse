@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reviews — PeedsPark Admin</title>
+<link rel="stylesheet" href="../css/style.css?v=20260904-4">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="container admin-header-inner">
+    <a href="dashboard.html" class="brand">
+      <img src="../images/peedspark-logo.jpg" alt="PeedsPark Club House logo">
+      <div><strong>Peeds Park</strong><span>Admin</span></div>
+    </a>
+    <div class="admin-user">
+      <span id="staffName">Loading…</span>
+      <span id="staffRole" class="role-badge"></span>
+      <button id="logoutBtn" class="btn btn-outline-dark">Log Out</button>
+    </div>
+  </div>
+</header>
+
+<main class="container admin-main">
+  <div id="notAuthorised" hidden class="policy-card" style="border-left:6px solid var(--coral); max-width:520px; margin:60px auto;">
+    <h3>Not authorised</h3>
+    <p>This account isn't set up as PeedsPark staff.</p>
+    <a class="btn btn-primary" href="index.html">Back to login</a>
+  </div>
+
+  <div id="pageContent" hidden>
+    <div class="page-head">
+      <a href="dashboard.html" class="back-link">&larr; Dashboard</a>
+      <h2>⭐ Reviews</h2>
+    </div>
+
+    <div class="policy-card" style="max-width:720px; margin-bottom:20px;">
+      <p style="margin:0;">Customers submit reviews from the homepage. Nothing shows publicly until you <strong>Approve</strong> it here — a rejected or unapproved review never appears on the site. <strong>Feature</strong> pins a review to the top of the homepage's Reviews section.</p>
+    </div>
+
+    <div class="filter-row" style="justify-content:space-between;">
+      <div class="filter-row" style="margin:0;">
+        <button class="filter-chip active" data-status="pending">Pending</button>
+        <button class="filter-chip" data-status="approved">Approved</button>
+        <button class="filter-chip" data-status="rejected">Rejected</button>
+        <button class="filter-chip" data-status="all">All</button>
+      </div>
+    </div>
+
+    <div class="list-controls-row">
+      <label class="search-field">Search
+        <input type="search" id="reviewAdminSearch" placeholder="Name, phone or review text…">
+      </label>
+    </div>
+
+    <div id="reviewAdminList" class="enquiry-list">
+      <p class="muted center" style="padding:40px;">Loading reviews…</p>
+    </div>
+    <div id="reviewAdminPager" class="pager-row" style="margin-top:12px; text-align:center;"></div>
+  </div>
+</main>
+
+<footer class="site-footer" id="contact">
+  <div class="container footer-inner">
+    <div><strong>PeedsPark Club House</strong><br><span>Ammancherry &bull; Kerala 686561</span></div>
+    <div>Sports &bull; Celebrations &bull; Memories</div>
+    <div><a href="../privacy-policy.html" class="footer-link">Privacy &amp; Booking Policy</a></div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../js/supabase-client.js?v=20260904"></script>
+<script src="js/admin-auth.js?v=20260904"></script>
+<script src="js/list-controls.js?v=20260904"></script>
+<script src="js/reviews.js?v=20260904"></script>
+</body>
+</html>

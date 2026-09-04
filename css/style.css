@@ -152,21 +152,51 @@ h3 { font-size: 1.25rem; }
 .hero-home .hero-text h1,
 .hero-home .hero-text .hero-sub { margin-left: 0; margin-right: 0; }
 .hero-home .hero-actions { justify-content: flex-start; }
-.hero-links { display: flex; flex-direction: column; gap: 14px; }
+.hero-links { display: flex; flex-direction: column; gap: 10px; }
+/* "Gelling" with the hero photo: a frosted-glass tint (echoes the same
+   dark overlay the photo itself sits under) instead of an opaque white
+   card — the buttons now read as part of the photo, not pasted on top
+   of it. Colour-coding moves from a flat left stripe to a full glowing
+   ring + a tinted icon badge, so each stays bold/colourful (owner's
+   design direction) without breaking the frosted look. */
 .hero-link-btn {
   display: flex; align-items: center; gap: 14px;
-  background: var(--white); color: var(--navy);
-  padding: 18px 22px; border-radius: var(--radius);
-  font-weight: 700; font-size: 1.05rem;
-  box-shadow: var(--shadow);
-  border-left: 6px solid var(--coral);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  background: rgba(23, 32, 42, 0.42);
+  -webkit-backdrop-filter: blur(10px) saturate(1.3);
+  backdrop-filter: blur(10px) saturate(1.3);
+  color: var(--white);
+  padding: 10px 20px; border-radius: var(--radius);
+  font-weight: 700; font-size: 1.0rem;
+  border: 1.5px solid rgba(255,255,255,0.22);
+  box-shadow: 0 10px 26px rgba(6,14,20,0.35);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 }
-.hero-link-btn .facility-icon { font-size: 1.6rem; }
-.hero-link-btn:hover { transform: translateY(-3px) translateX(2px); box-shadow: 0 14px 30px rgba(23,32,42,0.3); }
-.hero-link-teal { border-left-color: var(--teal); }
-.hero-link-coral { border-left-color: var(--coral); }
-.hero-link-gold { border-left-color: var(--coral-dark); }
+.hero-link-btn .facility-icon {
+  font-size: 1.1rem; width: 36px; height: 36px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: rgba(255,255,255,0.16);
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+.hero-link-btn span:last-child { text-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+.hero-link-btn:hover {
+  transform: translateY(-3px) translateX(2px);
+  background: rgba(23, 32, 42, 0.62);
+}
+.hero-link-btn:hover .facility-icon { transform: scale(1.1); }
+/* Fallback for browsers without backdrop-filter support: a solid tint
+   keeps the white text readable instead of going transparent. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .hero-link-btn { background: rgba(23, 32, 42, 0.82); }
+}
+.hero-link-teal { border-color: rgba(79,131,182,0.65); }
+.hero-link-teal .facility-icon { background: rgba(79,131,182,0.4); }
+.hero-link-teal:hover { border-color: var(--teal); box-shadow: 0 14px 32px rgba(79,131,182,0.4); }
+.hero-link-coral { border-color: rgba(231,201,107,0.65); }
+.hero-link-coral .facility-icon { background: rgba(231,201,107,0.38); }
+.hero-link-coral:hover { border-color: var(--coral); box-shadow: 0 14px 32px rgba(231,201,107,0.4); }
+.hero-link-gold { border-color: rgba(177,139,53,0.7); }
+.hero-link-gold .facility-icon { background: rgba(177,139,53,0.4); }
+.hero-link-gold:hover { border-color: var(--coral-dark); box-shadow: 0 14px 32px rgba(177,139,53,0.4); }
 
 @media (min-width: 760px) {
   .hero-home .hero-split { grid-template-columns: 1.15fr 0.85fr; }
@@ -216,20 +246,73 @@ a.facility-card { display: block; transition: transform 0.15s ease, box-shadow 0
 .chip { background: var(--white); border: 2px solid var(--teal); color: var(--teal-dark); padding: 10px 18px; border-radius: 8px; font-weight: 600; }
 
 /* Gallery — real photos (ported from the old site's images/ folder) in a
-   figure/figcaption grid, replacing the earlier coloured placeholder tiles. */
+   bento-style grid (one larger "hero" tile among smaller ones, instead of a
+   flat uniform grid) with a click-to-enlarge lightbox — user request. */
 .gallery { padding: 80px 0; background: var(--white); }
-.gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 20px; }
+.gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 20px; grid-auto-flow: dense; }
 @media (min-width: 700px) { .gallery-grid { grid-template-columns: repeat(3, 1fr); } }
+/* Hero tile: first photo (Front View) — full-width banner on mobile,
+   a bigger 2x2 block on desktop, so the grid isn't perfectly uniform. */
+.gallery-grid figure:first-child { grid-column: 1 / -1; }
+@media (min-width: 700px) {
+  .gallery-grid figure:first-child { grid-column: span 2; grid-row: span 2; }
+  .gallery-grid figure:nth-child(8) { grid-column: span 2; } /* Swimming Pool — second accent tile, desktop only */
+}
 .gallery-grid figure {
   position: relative; margin: 0; border-radius: var(--radius); overflow: hidden;
   aspect-ratio: 4/3; background: #EFE6D6; box-shadow: var(--shadow);
+  cursor: pointer; transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+.gallery-grid figure:hover, .gallery-grid figure:focus-visible {
+  box-shadow: 0 14px 30px rgba(23,32,42,0.28), 0 0 0 3px var(--coral);
+  transform: translateY(-3px);
 }
 .gallery-grid img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.35s ease; }
-.gallery-grid figure:hover img { transform: scale(1.06); }
+.gallery-grid figure:hover img, .gallery-grid figure:focus-visible img { transform: scale(1.06); }
 .gallery-grid figcaption {
   position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px;
   font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em; color: var(--white);
   background: linear-gradient(to top, rgba(23,32,42,0.85), rgba(23,32,42,0));
+}
+/* Small expand hint, centred, fades in on hover/focus/tap to signal the
+   photo is clickable — pure CSS, no image asset needed. */
+.gallery-grid figure::after {
+  content: "⤢"; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(0.7);
+  width: 42px; height: 42px; border-radius: 50%; background: rgba(23,32,42,0.55);
+  color: var(--white); font-size: 1.2rem; display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease; pointer-events: none;
+}
+.gallery-grid figure:hover::after, .gallery-grid figure:focus-visible::after { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+
+/* Lightbox — vanilla JS, toggled via the sitewide [hidden] rule at the top
+   of this file. See js/gallery-lightbox.js. */
+body.lightbox-open { overflow: hidden; }
+.lightbox-overlay {
+  position: fixed; inset: 0; z-index: 999; background: rgba(23,32,42,0.94);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.lightbox-content { position: relative; max-width: 92vw; max-height: 88vh; text-align: center; }
+.lightbox-content img {
+  display: block; margin: 0 auto; max-width: 92vw; max-height: 78vh; width: auto; height: auto;
+  object-fit: contain; border-radius: var(--radius); box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.lightbox-caption { color: var(--white); font-weight: 700; letter-spacing: 0.02em; margin-top: 16px; font-size: 0.95rem; }
+.lightbox-close, .lightbox-prev, .lightbox-next {
+  position: fixed; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.15); color: var(--white); border-radius: 50%;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.lightbox-close:hover, .lightbox-prev:hover, .lightbox-next:hover { background: var(--coral); color: var(--navy); transform: scale(1.08); }
+.lightbox-close { top: 18px; right: 18px; width: 44px; height: 44px; font-size: 1.4rem; }
+.lightbox-prev, .lightbox-next { top: 50%; transform: translateY(-50%); width: 52px; height: 52px; font-size: 1.6rem; }
+.lightbox-prev:hover, .lightbox-next:hover { transform: translateY(-50%) scale(1.08); }
+.lightbox-prev { left: 14px; }
+.lightbox-next { right: 14px; }
+@media (max-width: 640px) {
+  .lightbox-close { top: 10px; right: 10px; width: 40px; height: 40px; }
+  .lightbox-prev, .lightbox-next { width: 44px; height: 44px; }
+  .lightbox-prev { left: 6px; }
+  .lightbox-next { right: 6px; }
 }
 
 /* Merged Check Availability + Book flow (facility pages) — two-column
@@ -358,3 +441,39 @@ footer{background:#315f88;color:#ffffff;padding:25px 0}
 .intro-grid{display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:center}
 .uses{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .uses div{border:1px solid rgba(79,131,182,.25);padding:18px;border-radius:8px;text-align:center;font-weight:600;color:var(--navy)}
+
+/* Reviews — public "what guests say" section + Write a Review form.
+   Soft gold/cream tint deliberately distinct from the white Gallery
+   above and the steel-blue Enquire band below, for visual rhythm. */
+.reviews { padding: 80px 0; background: #FBF3DE; }
+.reviews-grid { display: grid; gap: 20px; grid-template-columns: 1fr; margin-top: 32px; }
+@media (min-width: 640px) { .reviews-grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 960px) { .reviews-grid { grid-template-columns: repeat(3, 1fr); } }
+.review-card {
+  background: var(--white); border-radius: var(--radius); padding: 22px;
+  box-shadow: var(--shadow); border-top: 4px solid var(--coral);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.review-card.featured { border-top-color: var(--teal); }
+.review-card .review-stars { color: var(--coral-dark); font-size: 1.15rem; letter-spacing: 2px; }
+.review-card .review-text { color: var(--navy); font-style: italic; line-height: 1.55; flex-grow: 1; }
+.review-card .review-meta {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  font-weight: 700; color: var(--teal-dark); font-size: 0.9rem;
+  border-top: 1px solid #EDE0BE; padding-top: 10px;
+}
+.review-card .review-meta span:last-child { font-weight: 600; color: var(--muted); font-size: 0.8rem; text-align: right; }
+.reviews-empty { text-align: center; color: var(--muted); font-style: italic; margin-top: 32px; }
+.reviews-cta { text-align: center; margin-top: 28px; }
+.reviews .panel-form { margin-top: 24px; }
+
+/* Star-rating picker — big tap targets (mobile-first), gold fill on
+   hover/selection, no library. */
+.star-picker { display: flex; gap: 4px; margin-top: 6px; }
+.star-btn {
+  background: none; border: none; font-size: 2.1rem; line-height: 1;
+  color: #D8D2C4; cursor: pointer; padding: 4px 6px;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+.star-btn:hover, .star-btn:focus-visible, .star-btn.selected { color: var(--coral-dark); }
+.star-btn:hover, .star-btn:focus-visible { transform: scale(1.15); }
