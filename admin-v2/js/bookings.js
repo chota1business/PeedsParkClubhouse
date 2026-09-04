@@ -2,9 +2,11 @@
 
 const BOOKING_STATUS_COLORS = { pending: "#D9A441", approved: "#2E9E5B", rejected: "#B33A3A", cancelled: "#8A8A8A" };
 const FACILITY_LABELS = { ac_hall: "AC Hall", non_ac_hall: "Non-AC Hall", lawn: "Lawn" };
+const HALL_LAWN_IDS = ["ac_hall", "non_ac_hall", "lawn"];
 
 let staff = null;
 let allBookings = [];
+let allEnquiries = [];
 let activeFilter = "all";
 let listControls = null;
 
@@ -32,29 +34,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     dateFromId: "bookingDateFrom",
     dateToId: "bookingDateTo",
     pagerContainerId: "bookingPager",
-    searchText: (b) => `${b.customer_name} ${b.phone}`,
-    dateField: (b) => b.booking_date,
+    searchText: (r) => `${r.customer_name} ${r.phone}`,
+    dateField: (r) => r._kind === "enquiry" ? r.preferred_date : r.booking_date,
     onChange: renderBookings,
   });
 
-  const toggleBlocksBtn = document.getElementById("toggleBlocksBtn");
-  const blocksPanel = document.getElementById("blocksPanel");
-  toggleBlocksBtn?.addEventListener("click", () => {
-    blocksPanel.hidden = !blocksPanel.hidden;
-    toggleBlocksBtn.textContent = blocksPanel.hidden ? "🚫 Manage Blocks" : "✖ Close Blocks";
-  });
-
-  document.getElementById("blockForm").addEventListener("submit", createBlock);
   wireEditBookingModal();
-  // Blocking a facility for maintenance is Admin-only (DB-enforced via RLS
-  // too) — Managers can still see existing blocks below, just not create or
-  // remove them.
-  if (staff.role !== "admin") {
-    document.getElementById("blockForm").hidden = true;
-    document.getElementById("blockAdminNote")?.removeAttribute("hidden");
-  }
-
-  await Promise.all([loadBookings(), loadBlocks()]);
+  wireEnquiryModal();
+  await Promise.all([loadBookings(), loadEnquiries()]);
 });
 
 async function loadBookings() {
@@ -67,28 +54,73 @@ async function loadBookings() {
     document.getElementById("bookingList").innerHTML = `<p class="muted center" style="padding:40px;">Couldn't load bookings: ${escapeHtml(error.message)}</p>`;
     return;
   }
-  allBookings = data || [];
+  allBookings = (data || []).map(b => ({ ...b, _kind: "booking" }));
   listControls?.resetPage();
+  renderBookings();
+}
+
+// Item 2 — this page (like Manager Feed) shows both enquiry and booking
+// requests for its facilities, not just bookings.
+async function loadEnquiries() {
+  const { data, error } = await supabaseClient
+    .from("enquiries")
+    .select("*")
+    .in("facility_id", HALL_LAWN_IDS)
+    .order("preferred_date", { ascending: true });
+
+  if (error) return; // non-fatal — bookings list still works on its own
+  allEnquiries = (data || []).map(e => ({ ...e, _kind: "enquiry" }));
   renderBookings();
 }
 
 function renderBookings() {
   const container = document.getElementById("bookingList");
-  let rows = activeFilter === "all" ? allBookings : allBookings.filter(b => b.status === activeFilter);
+  let bookingRows = activeFilter === "all" ? allBookings : allBookings.filter(b => b.status === activeFilter);
+  // Enquiries have no booking status, so they only show under "All" or
+  // "Pending" (an un-actioned enquiry reads the same as a pending request).
+  let enquiryRows = (activeFilter === "all" || activeFilter === "pending") ? allEnquiries : [];
+  let rows = [...bookingRows, ...enquiryRows].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   rows = listControls ? listControls.apply(rows) : rows;
 
   if (rows.length === 0) {
-    container.innerHTML = `<p class="muted center" style="padding:40px;">No bookings here.</p>`;
+    container.innerHTML = `<p class="muted center" style="padding:40px;">No bookings or enquiries here.</p>`;
     listControls?.renderPager(0);
     return;
   }
 
   const page = listControls ? listControls.paginate(rows) : { rows };
-  container.innerHTML = page.rows.map(bookingRowHtml).join("");
+  container.innerHTML = page.rows.map(r => r._kind === "enquiry" ? enquiryRowHtml(r) : bookingRowHtml(r)).join("");
   container.querySelectorAll("[data-action]").forEach(btn => {
-    btn.addEventListener("click", () => handleBookingAction(btn.dataset.id, btn.dataset.action));
+    btn.addEventListener("click", () => handleBookingAction(btn.dataset.id, btn.dataset.action, btn.dataset.kind));
   });
   listControls?.renderPager(rows.length);
+}
+
+function enquiryRowHtml(e) {
+  const waLink = `https://wa.me/${(e.phone || "").replace(/\D/g, "")}`;
+  const telLink = `tel:${(e.phone || "").replace(/\D/g, "")}`;
+  return `
+    <div class="enquiry-card" style="border-left-color:#7C6FBB;">
+      <div class="enquiry-card-main">
+        <div>
+          <span class="row-kind-tag kind-enquiry">Enquiry</span>
+          <strong>${escapeHtml(e.customer_name)}</strong>
+          <span class="muted"> · ${escapeHtml(e.phone)}</span>
+        </div>
+        <div class="muted small">
+          ${e.enquiry_code} · ${FACILITY_LABELS[e.facility_id] || "Not sure / multiple"}
+          ${e.preferred_date ? " · " + e.preferred_date : ""}
+          ${e.guests ? " · " + e.guests + " guests" : ""}
+          · status: <strong>${e.status}</strong>
+        </div>
+        ${e.message ? `<p class="enquiry-message">${escapeHtml(e.message)}</p>` : ""}
+      </div>
+      <div class="enquiry-card-actions">
+        <button class="btn btn-outline-dark btn-sm" data-id="${e.id}" data-kind="enquiry" data-action="edit">✏️ Edit</button>
+        <a class="btn btn-outline-dark btn-sm" href="${waLink}" target="_blank" rel="noopener">💬 WhatsApp</a>
+        <a class="btn btn-outline-dark btn-sm" href="${telLink}">📞 Call</a>
+      </div>
+    </div>`;
 }
 
 function bookingRowHtml(b) {
@@ -112,6 +144,7 @@ function bookingRowHtml(b) {
     <div class="enquiry-card" style="border-left-color:${color};">
       <div class="enquiry-card-main">
         <div>
+          <span class="row-kind-tag kind-booking">Booking</span>
           <strong>${escapeHtml(b.customer_name)}</strong>
           <span class="muted"> · ${escapeHtml(b.phone)}</span>
         </div>
@@ -125,95 +158,22 @@ function bookingRowHtml(b) {
         ${b.notes ? `<p class="enquiry-message">${escapeHtml(b.notes)}</p>` : ""}
       </div>
       <div class="enquiry-card-actions">
-        ${canEdit ? `<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-action="edit">✏️ Edit</button>` : ""}
+        ${canEdit ? `<button class="btn btn-outline-dark btn-sm" data-id="${b.id}" data-kind="booking" data-action="edit">✏️ Edit</button>` : ""}
         <a class="btn btn-outline-dark btn-sm" href="${waLink}" target="_blank" rel="noopener">💬 WhatsApp</a>
         <a class="btn btn-outline-dark btn-sm" href="${telLink}">📞 Call</a>
       </div>
     </div>`;
 }
 
-async function handleBookingAction(id, action) {
+async function handleBookingAction(id, action, kind) {
+  if (kind === "enquiry") {
+    const enquiry = allEnquiries.find(e => e.id === id);
+    if (enquiry && action === "edit") openEnquiryModal(enquiry);
+    return;
+  }
   const booking = allBookings.find(b => b.id === id);
   if (!booking) return;
   if (action === "edit") return openEditBookingModal(booking);
-}
-
-async function loadBlocks() {
-  const { data, error } = await supabaseClient
-    .from("blocks")
-    .select("*")
-    .in("facility_id", ["ac_hall", "non_ac_hall", "lawn"])
-    .order("start_at", { ascending: true });
-
-  const container = document.getElementById("blockList");
-  if (error) {
-    container.innerHTML = `<p class="muted small">Couldn't load blocks: ${escapeHtml(error.message)}</p>`;
-    return;
-  }
-  if (!data || data.length === 0) {
-    container.innerHTML = `<p class="muted small">No active blocks.</p>`;
-    return;
-  }
-
-  container.innerHTML = data.map(b => `
-    <div class="enquiry-card" style="border-left-color:var(--navy);">
-      <div class="enquiry-card-main">
-        <strong>${FACILITY_LABELS[b.facility_id] || b.facility_id}</strong>
-        <div class="muted small">${new Date(b.start_at).toLocaleString()} → ${new Date(b.end_at).toLocaleString()} ${b.reason ? "· " + escapeHtml(b.reason) : ""}</div>
-      </div>
-      <div class="enquiry-card-actions">
-        ${staff.role === "admin" ? `<button class="btn btn-outline-dark btn-sm" data-unblock="${b.id}">Unblock</button>` : ""}
-      </div>
-    </div>`).join("");
-
-  container.querySelectorAll("[data-unblock]").forEach(btn => {
-    btn.addEventListener("click", () => removeBlock(btn.dataset.unblock));
-  });
-}
-
-async function createBlock(e) {
-  e.preventDefault();
-  const form = e.target;
-  const data = Object.fromEntries(new FormData(form).entries());
-
-  if (new Date(data.end_at) <= new Date(data.start_at)) {
-    alert("End time must be after start time.");
-    return;
-  }
-  if (!confirm(`Block ${FACILITY_LABELS[data.facility_id]} from ${data.start_at} to ${data.end_at}?`)) return;
-
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  const { data: inserted, error } = await supabaseClient
-    .from("blocks")
-    .insert({
-      facility_id: data.facility_id,
-      start_at: new Date(data.start_at).toISOString(),
-      end_at: new Date(data.end_at).toISOString(),
-      reason: data.reason?.trim() || null,
-      created_by: user.id,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    alert("Couldn't create block: " + error.message);
-    return;
-  }
-
-  await writeAudit("create_block", "blocks", inserted.id, { facility_id: data.facility_id, start_at: data.start_at, end_at: data.end_at });
-  form.reset();
-  await loadBlocks();
-}
-
-async function removeBlock(id) {
-  if (!confirm("Remove this block? The slot becomes available again immediately.")) return;
-  const { error } = await supabaseClient.from("blocks").delete().eq("id", id);
-  if (error) {
-    alert("Couldn't remove block: " + error.message);
-    return;
-  }
-  await writeAudit("remove_block", "blocks", id, {});
-  await loadBlocks();
 }
 
 // ---------- Edit Booking modal ----------
@@ -246,6 +206,8 @@ function openEditBookingModal(booking) {
   form.elements["id"].value = booking.id;
   form.elements["customer_name"].value = booking.customer_name;
   form.elements["phone"].value = booking.phone; // locked — shown for reference only
+  form.elements["email"].value = booking.email || "";
+  form.elements["facility_id"].value = booking.facility_id;
   form.elements["booking_date"].value = booking.booking_date;
   form.elements["slot"].value = booking.slot;
   form.elements["guests"].value = booking.guests || "";
@@ -316,6 +278,8 @@ async function submitEditBooking(e) {
 
   const update = {
     customer_name: data.customer_name.trim(),
+    email: data.email?.trim() || null,
+    facility_id: data.facility_id,
     booking_date: data.booking_date,
     slot: data.slot,
     guests: data.guests ? Number(data.guests) : null,
@@ -379,6 +343,64 @@ async function writeAudit(action, table, recordId, details) {
   await supabaseClient.from("audit_log").insert({
     actor_id: user.id, action, table_name: table, record_id: recordId, details,
   });
+}
+
+// ---------- Edit Enquiry modal (item 2 — enquiries merged into this page) ----------
+
+function wireEnquiryModal() {
+  const modal = document.getElementById("enquiryModal");
+  document.getElementById("closeEnquiryModalBtn").addEventListener("click", () => { modal.hidden = true; });
+  document.getElementById("enquiryForm2").addEventListener("submit", submitEnquiryModal);
+}
+
+function openEnquiryModal(enquiry) {
+  const modal = document.getElementById("enquiryModal");
+  const form = document.getElementById("enquiryForm2");
+  document.getElementById("enquiryModalError").hidden = true;
+
+  form.elements["id"].value = enquiry.id;
+  form.elements["customer_name"].value = enquiry.customer_name;
+  const phoneInput = form.elements["phone"];
+  phoneInput.value = enquiry.phone || ""; // locked — shown for reference only
+  form.elements["email"].value = enquiry.email || "";
+  form.elements["facility_id"].value = enquiry.facility_id || "";
+  form.elements["preferred_date"].value = enquiry.preferred_date || "";
+  form.elements["guests"].value = enquiry.guests || "";
+  form.elements["status"].value = enquiry.status;
+  form.elements["message"].value = enquiry.message || "";
+
+  modal.hidden = false;
+}
+
+async function submitEnquiryModal(e) {
+  e.preventDefault();
+  const form = e.target;
+  const data = Object.fromEntries(new FormData(form).entries());
+  const errorEl = document.getElementById("enquiryModalError");
+  errorEl.hidden = true;
+
+  const update = {
+    customer_name: data.customer_name.trim(),
+    email: data.email?.trim() || null,
+    facility_id: data.facility_id || null,
+    preferred_date: data.preferred_date || null,
+    guests: data.guests ? Number(data.guests) : null,
+    status: data.status,
+    message: data.message?.trim() || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabaseClient.from("enquiries").update(update).eq("id", data.id);
+  if (error) {
+    errorEl.textContent = "Couldn't save changes: " + error.message;
+    errorEl.hidden = false;
+    return;
+  }
+
+  const enquiry = allEnquiries.find(en => en.id === data.id);
+  if (enquiry) Object.assign(enquiry, update);
+  document.getElementById("enquiryModal").hidden = true;
+  renderBookings();
 }
 
 function escapeHtml(str) {

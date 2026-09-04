@@ -49,6 +49,23 @@ window.supabase = {
           }
           return { data: { type: 'hourly', bookingModel: 'resource', slots: slots }, error: null };
         }
+        if (name === 'get_block_grid') {
+          // Badminton-court-shaped day: 05-08 members block, 08-17 open,
+          // 17-23 members block with 18:00 already opened for this date.
+          var tiles = [];
+          for (var g = 5; g < 23; g++) {
+            var t = { start: String(g).padStart(2,'0') + ':00', end: String(g+1).padStart(2,'0') + ':00' };
+            if (g >= 8 && g < 17) { t.state = 'open'; }
+            else {
+              t.block_id = 'blk1'; t.group_id = 'grp1'; t.block_type = 'badminton_members';
+              t.label = 'Members Only'; t.is_recurring = true;
+              if (g === 18) { t.state = 'opened'; t.exception_id = 'exc1'; }
+              else { t.state = 'blocked'; }
+            }
+            tiles.push(t);
+          }
+          return { data: { type: 'hourly', tiles: tiles }, error: null };
+        }
         return { data: null, error: null };
       },
     };
@@ -445,13 +462,10 @@ def run():
         check("Bookings Edit modal: refund/cancellation-reason fields only appear when status is set to Cancelled",
               cancel_fields_toggle["hiddenBefore"] and not cancel_fields_toggle["hiddenAfterCancelled"] and cancel_fields_toggle["hiddenAfterApproved"])
 
-        panel_hidden_initially = page.eval_on_selector("#blocksPanel", "el => el.hidden")
-        page.click("#toggleBlocksBtn")
-        panel_shown_after_click = page.eval_on_selector("#blocksPanel", "el => !el.hidden")
-        page.click("#toggleBlocksBtn")
-        panel_hidden_after_second_click = page.eval_on_selector("#blocksPanel", "el => el.hidden")
-        check("Bookings: Block/Unblock panel starts collapsed behind the Manage Blocks toggle",
-              panel_hidden_initially and panel_shown_after_click and panel_hidden_after_second_click)
+        # The old in-page block panels were removed from both booking pages —
+        # blocking now lives entirely on admin-v2/blocks.html.
+        no_panel_bookings = page.eval_on_selector_all("#blocksPanel, #toggleBlocksBtn, #blockForm", "els => els.length")
+        check("Bookings page no longer carries its own block panel", no_panel_bookings == 0)
         page.close()
 
         page = browser.new_page()
@@ -460,11 +474,117 @@ def run():
         page.add_init_script("window.__STAFF_ROLE__ = 'admin';")
         page.goto(f"file://{ROOT}/admin-v2/hourly-bookings.html")
         page.wait_for_timeout(300)
-        hourly_panel_hidden = page.eval_on_selector("#blocksPanel", "el => el.hidden")
-        page.click("#toggleBlocksBtn")
-        hourly_panel_shown = page.eval_on_selector("#blocksPanel", "el => !el.hidden")
-        check("Pool & Badminton: maintenance-block + reserved-hours tools collapsed behind one Manage Blocks toggle",
-              hourly_panel_hidden and hourly_panel_shown)
+        no_panel_hourly = page.eval_on_selector_all(
+            "#blocksPanel, #toggleBlocksBtn, #blockForm, #unblockForm", "els => els.length")
+        check("Pool & Badminton page no longer carries its own block / reserved-hours panels",
+              no_panel_hourly == 0)
+        page.close()
+
+        # --- Blocks & Closures page (new) ---
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.add_init_script("window.__STAFF_ROLE__ = 'manager';")
+        page.goto(f"file://{ROOT}/admin-v2/blocks.html")
+        page.wait_for_timeout(400)
+        mgr_blocked = page.eval_on_selector("#notAuthorised", "el => !el.hidden")
+        mgr_content_hidden = page.eval_on_selector("#pageContent", "el => el.hidden")
+        check("Blocks page: a Manager sees the not-authorised panel, not the tools",
+              mgr_blocked and mgr_content_hidden)
+        page.close()
+
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.add_init_script("window.__STAFF_ROLE__ = 'admin';")
+        page.goto(f"file://{ROOT}/admin-v2/blocks.html")
+        page.wait_for_timeout(600)
+        check("Blocks page: an Admin sees the page content",
+              page.eval_on_selector("#pageContent", "el => !el.hidden"))
+
+        grid = page.evaluate("""() => {
+            const tiles = [...document.querySelectorAll('.hour-tile')];
+            return {
+              total: tiles.length,
+              open: tiles.filter(t => t.classList.contains('state-open')).length,
+              blocked: tiles.filter(t => t.classList.contains('state-blocked')).length,
+              opened: tiles.filter(t => t.classList.contains('state-opened')).length,
+              openDisabled: tiles.filter(t => t.classList.contains('state-open')).every(t => t.disabled),
+              blockedClickable: tiles.filter(t => t.classList.contains('state-blocked')).every(t => !t.disabled),
+            };
+        }""")
+        check("Blocks day view: renders one tile per hour (18 for a badminton court)", grid["total"] == 18)
+        check("Blocks day view: open hours shown as Open and not tappable",
+              grid["open"] == 9 and grid["openDisabled"])
+        check("Blocks day view: blocked hours are tappable so they can be opened",
+              grid["blocked"] == 8 and grid["blockedClickable"])
+        check("Blocks day view: an hour already opened for this date shows as Opened",
+              grid["opened"] == 1)
+
+        # Request type drives which fields show, and which facilities are pickable.
+        members_state = page.evaluate("""() => {
+            document.querySelector('input[name="block_type"][value="badminton_members"]').click();
+            const rows = [...document.querySelectorAll('#facilityChecks .check-row')];
+            return {
+              membersShown: !document.getElementById('fieldsMembers').hidden,
+              maintHidden: document.getElementById('fieldsMaintenance').hidden,
+              closureHidden: document.getElementById('fieldsClosure').hidden,
+              disabledNonBadminton: rows.filter(r => r.dataset.badminton === '0')
+                                        .every(r => r.querySelector('input').disabled),
+              enabledBadminton: rows.filter(r => r.dataset.badminton === '1')
+                                    .every(r => !r.querySelector('input').disabled),
+            };
+        }""")
+        check("Blocks form: Badminton block shows the daily time fields only",
+              members_state["membersShown"] and members_state["maintHidden"] and members_state["closureHidden"])
+        check("Blocks form: Badminton block allows only the two courts to be ticked",
+              members_state["disabledNonBadminton"] and members_state["enabledBadminton"])
+
+        maint_state = page.evaluate("""() => {
+            document.querySelector('input[name="block_type"][value="maintenance"]').click();
+            const rows = [...document.querySelectorAll('#facilityChecks .check-row')];
+            return {
+              maintShown: !document.getElementById('fieldsMaintenance').hidden,
+              membersHidden: document.getElementById('fieldsMembers').hidden,
+              allEnabled: rows.every(r => !r.querySelector('input').disabled),
+            };
+        }""")
+        check("Blocks form: Maintenance shows date-time fields and re-enables every facility",
+              maint_state["maintShown"] and maint_state["membersHidden"] and maint_state["allEnabled"])
+
+        closure_state = page.evaluate("""() => {
+            document.querySelector('input[name="block_type"][value="closure"]').click();
+            return {
+              closureShown: !document.getElementById('fieldsClosure').hidden,
+              maintHidden: document.getElementById('fieldsMaintenance').hidden,
+            };
+        }""")
+        check("Blocks form: Facility closure shows whole-day date fields",
+              closure_state["closureShown"] and closure_state["maintHidden"])
+
+        multi = page.evaluate("""() => {
+            const boxes = [...document.querySelectorAll('#facilityChecks input[type=checkbox]')];
+            boxes[0].checked = true; boxes[3].checked = true;
+            return boxes.filter(b => b.checked).length;
+        }""")
+        check("Blocks form: more than one facility can be ticked at once", multi == 2)
+        page.close()
+
+        # Public site: the new block labels each get their own badge colour
+        # rather than falling through to the generic "booked" red.
+        page = browser.new_page()
+        page.route("**/supabase-js@2/dist/umd/supabase.min.js", lambda route: route.fulfill(
+            content_type="application/javascript", body=SUPABASE_STUB))
+        page.goto(f"file://{ROOT}/badminton.html")
+        page.wait_for_timeout(300)
+        styles = page.evaluate("""() => ({
+            members: statusBadgeStyle('Members Only'),
+            maintenance: statusBadgeStyle('Under Maintenance'),
+            closed: statusBadgeStyle('Closed'),
+            available: statusBadgeStyle('Available'),
+        })""")
+        check("Public site: Members Only / Under Maintenance / Closed each get a distinct badge colour",
+              len({styles["members"], styles["maintenance"], styles["closed"], styles["available"]}) == 4)
         page.close()
 
         # list-controls.js: search + date range + pagination behave correctly in isolation

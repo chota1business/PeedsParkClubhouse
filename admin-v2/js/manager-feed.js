@@ -13,7 +13,7 @@ const STATUS_COLORS = {
   // enquiry lifecycle
   new: "#0E7C7B", contacted: "#D9A441", follow_up: "#FF6B35", converted: "#2E9E5B", lost: "#8A8A8A",
   // booking lifecycle
-  pending: "#D9A441", approved: "#2E9E5B", rejected: "#B33A3A", cancelled: "#8A8A8A",
+  pending: "#D9A441", approved: "#2E9E5B", cancelled: "#8A8A8A",
 };
 const ENQUIRY_STATUS_LABELS = { new: "New", contacted: "Contacted", follow_up: "Follow-up", converted: "Converted", lost: "Lost" };
 const FACILITY_LABELS = {
@@ -21,6 +21,7 @@ const FACILITY_LABELS = {
   pool: "Swimming Pool", badminton_1: "Badminton Court 1", badminton_2: "Badminton Court 2",
 };
 const HALL_LAWN_IDS = ["ac_hall", "non_ac_hall", "lawn"];
+const CLUB_HOUSE_IDS = ["ac_hall", "non_ac_hall", "lawn"];
 
 let staff = null;
 let allFeed = [];
@@ -72,14 +73,10 @@ function wireTabs() {
 // ---------- Activity feed ----------
 
 function wireActivityControls() {
-  document.querySelectorAll("[data-type]").forEach((chip) => {
-    chip.addEventListener("click", () => {
-      document.querySelectorAll("[data-type]").forEach((c) => c.classList.remove("active"));
-      chip.classList.add("active");
-      activeType = chip.dataset.type;
-      listControls?.resetPage();
-      renderFeed();
-    });
+  document.getElementById("feedTypeFilter").addEventListener("change", (e) => {
+    activeType = e.target.value;
+    listControls?.resetPage();
+    renderFeed();
   });
 
   listControls = createListControls({
@@ -114,7 +111,19 @@ function renderFeed() {
   const container = document.getElementById("feedList");
   let rows = allFeed;
 
-  if (activeType !== "all") rows = rows.filter((r) => r.record_type === activeType);
+  // "enquiry" filters by record type; "club_house" / "pool" / "badminton"
+  // filter by facility group (matching the Dashboard's grouping) and apply
+  // to enquiries and bookings alike — user request, dropdown replacing the
+  // old per-record-type filter chips.
+  if (activeType === "enquiry") {
+    rows = rows.filter((r) => r.record_type === "enquiry");
+  } else if (activeType === "club_house") {
+    rows = rows.filter((r) => CLUB_HOUSE_IDS.includes(r.facility_id));
+  } else if (activeType === "pool") {
+    rows = rows.filter((r) => r.facility_id === "pool");
+  } else if (activeType === "badminton") {
+    rows = rows.filter((r) => (r.facility_id || "").startsWith("badminton"));
+  }
   rows = listControls ? listControls.apply(rows) : rows;
 
   if (rows.length === 0) {
@@ -202,8 +211,11 @@ function feedRowHtml(r) {
 
 // ---------- Edit Booking modal (feed's fast call-and-decide path) ----------
 
+// No "rejected" option any more — a pending request that isn't going
+// forward is simply cancelled (user request, to keep this one action
+// instead of two).
 const FEED_STATUS_OPTIONS = {
-  pending: [["pending", "Pending"], ["approved", "Approved"], ["rejected", "Rejected"]],
+  pending: [["pending", "Pending"], ["approved", "Approved"], ["cancelled", "Cancelled"]],
   approved: [["approved", "Approved"], ["cancelled", "Cancelled"]],
 };
 
@@ -226,6 +238,9 @@ function openEditFeedBookingModal(row) {
   form.elements["record_type"].value = row.record_type;
   form.elements["customer_name"].value = row.customer_name;
   form.elements["phone"].value = row.phone; // locked — shown for reference only
+  form.elements["email"].value = row.email || "";
+  form.elements["facility_label"].value = row.facility_id ? (FACILITY_LABELS[row.facility_id] || row.facility_id) : "no facility chosen";
+  form.elements["booking_date"].value = row.activity_date || "";
   form.elements["total_amount"].value = row.total_amount ?? "";
   form.elements["amount_paid"].value = row.amount_paid ?? "";
   form.elements["notes"].value = row.notes || "";
@@ -291,6 +306,7 @@ async function submitEditFeedBooking(e) {
 
   const update = {
     customer_name: data.customer_name.trim(),
+    email: data.email?.trim() || null,
     notes: data.notes?.trim() || null,
     status: newStatus,
     total_amount: totalAmount,
@@ -298,6 +314,9 @@ async function submitEditFeedBooking(e) {
     payment_status: paymentStatus,
     updated_at: new Date().toISOString(),
   };
+  // Only touch the date if one was actually entered — an emptied field
+  // should never null out a real booking date.
+  if (data.booking_date) update.booking_date = data.booking_date;
 
   let auditAction = `edit_${recordType}`;
   if (newStatus !== originalStatus) {
@@ -513,11 +532,14 @@ function openEnquiryModal(row) {
   form.reset();
   const statusWrap = document.getElementById("enquiryStatusFieldWrap");
 
+  const phoneInput = form.elements["phone"];
   if (row) {
     document.getElementById("enquiryModalTitle").textContent = "Edit Enquiry";
     form.elements["id"].value = row.id;
     form.elements["customer_name"].value = row.customer_name;
-    form.elements["phone"].value = row.phone;
+    phoneInput.value = row.phone;
+    phoneInput.disabled = true; // locked once an enquiry exists — user request
+    phoneInput.classList.add("locked-field");
     form.elements["email"].value = row.email || "";
     form.elements["facility_id"].value = row.facility_id || "";
     form.elements["preferred_date"].value = row.activity_date || "";
@@ -527,6 +549,8 @@ function openEnquiryModal(row) {
   } else {
     document.getElementById("enquiryModalTitle").textContent = "Add Enquiry";
     form.elements["id"].value = "";
+    phoneInput.disabled = false;
+    phoneInput.classList.remove("locked-field");
     statusWrap.hidden = true;
   }
   modal.hidden = false;
@@ -537,7 +561,9 @@ async function submitEnquiryModal(e) {
   const form = e.target;
   const data = Object.fromEntries(new FormData(form).entries());
 
-  if (!/^[0-9]{10}$/.test(data.phone)) {
+  // Phone is locked (excluded from the form payload) once an enquiry
+  // already exists — only validate/require it for a brand-new enquiry.
+  if (!data.id && !/^[0-9]{10}$/.test(data.phone)) {
     alert("Please enter a valid 10-digit mobile number.");
     return;
   }
@@ -552,10 +578,10 @@ async function submitEnquiryModal(e) {
 
   if (data.id) {
     // Editing an existing enquiry — status changes now happen here instead
-    // of the old inline per-row dropdown.
+    // of the old inline per-row dropdown. Phone is not included: it's
+    // locked in the edit form (user request).
     const update = {
       customer_name: data.customer_name.trim(),
-      phone: data.phone.trim(),
       email: data.email?.trim() || null,
       facility_id: data.facility_id || null,
       preferred_date: data.preferred_date || null,

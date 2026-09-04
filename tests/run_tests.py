@@ -79,6 +79,7 @@ ADMIN_PROTECTED_PAGES = [
     "admin-v2/bookings.html",
     "admin-v2/hourly-bookings.html",
     "admin-v2/manager-feed.html",
+    "admin-v2/blocks.html",
 ]
 ADMIN_LOGIN_PAGE = "admin-v2/index.html"
 ALL_PAGES = PUBLIC_PAGES + ADMIN_PROTECTED_PAGES + [ADMIN_LOGIN_PAGE]

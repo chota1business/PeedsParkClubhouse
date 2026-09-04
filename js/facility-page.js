@@ -144,8 +144,13 @@ function clearFormError(noteId) {
 
 function statusBadgeStyle(status) {
   if (status === "Available") return "background:#D9EAD3;color:#2e6b2e;";
-  if (status === "Blocked") return "background:#e0e0e0;color:#555;";
   if (status === "Pending") return "background:#FCE8B2;color:#8a6400;";
+  // Block labels come straight from the database (block_type_label) so a
+  // customer sees why a time isn't bookable, not just that it isn't.
+  if (status === "Members Only") return "background:#E8DDEF;color:#5A3A78;";
+  if (status === "Under Maintenance") return "background:#FCE8B2;color:#8a6400;";
+  if (status === "Closed") return "background:#F4CCCC;color:#9c2b2b;";
+  if (status === "Blocked") return "background:#e0e0e0;color:#555;";
   if (status === "Reserved") return "background:#E8DDEF;color:#5A3A78;";
   if (status === "Past") return "background:#e0e0e0;color:#777777;";
   return "background:#F4CCCC;color:#9c2b2b;"; // Booked / Full
@@ -490,6 +495,10 @@ async function submitBooking(e, config) {
       msg = "That slot is already booked exclusively by another group — please try a different time.";
     } else if (error.message?.includes("members-reserved hours") || error.message?.includes("hasn't been opened for public booking")) {
       msg = "Part of this time falls within members-reserved hours and isn't open for public booking yet — please choose a shorter duration or a different time.";
+    } else if (error.message?.includes("under maintenance")) {
+      msg = "This facility is closed for maintenance at that time — please pick another time or date.";
+    } else if (error.message?.includes("is closed on")) {
+      msg = "We're closed on that date — please pick another day.";
     }
     showFormError("bookFormError", msg);
     return;

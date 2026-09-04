@@ -1,0 +1,229 @@
+/* PeedsPark Admin — Blocks & Closures page.
+   Mobile-first: the hour grid is a single column of big tap targets on a
+   phone and only becomes a multi-column grid on wider screens. */
+
+.blocks-tabs { margin-bottom: 22px; }
+
+/* ---------- Day view ---------- */
+.day-picker {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.day-picker label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--navy);
+  flex: 1 1 200px;
+}
+.day-picker select,
+.day-picker input {
+  padding: 12px;
+  border: 2px solid #DDD8CE;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 1rem;
+  background: var(--white);
+  color: var(--text);
+}
+.day-picker select:focus,
+.day-picker input:focus { outline: none; border-color: var(--teal); }
+
+.day-help { margin: 0 0 14px; }
+
+.grid-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  display: inline-block;
+  border: 2px solid rgba(23, 32, 42, 0.12);
+}
+.sw-open    { background: #D9EAD3; }
+.sw-members { background: #E8DDEF; }
+.sw-maint   { background: #FCE8B2; }
+.sw-closed  { background: #F4CCCC; }
+.sw-opened  { background: #D9EAD3; border-style: dashed; border-color: var(--plum); }
+
+.hour-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+@media (min-width: 560px) { .hour-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 860px) { .hour-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.hour-tile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 62px;
+  padding: 14px 16px;
+  border: 2px solid rgba(23, 32, 42, 0.10);
+  border-radius: var(--radius);
+  background: var(--white);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.15s ease;
+}
+.hour-tile:hover:not(:disabled) { box-shadow: var(--shadow); }
+.hour-tile:active:not(:disabled) { transform: scale(0.985); }
+.hour-tile:disabled { cursor: default; }
+
+.hour-time {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--navy);
+  letter-spacing: 0.01em;
+}
+.hour-state {
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 5px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.hour-hint {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.hour-tile.state-open              { background: #F3F9F1; border-color: #BEDDB4; }
+.hour-tile.state-open .hour-state  { background: #D9EAD3; color: #2e6b2e; }
+
+.hour-tile.state-blocked.type-badminton_members            { background: #F7F2FA; border-color: #D4C1E0; }
+.hour-tile.state-blocked.type-badminton_members .hour-state{ background: #E8DDEF; color: #5A3A78; }
+
+.hour-tile.state-blocked.type-maintenance             { background: #FEF9EC; border-color: #EBD79A; }
+.hour-tile.state-blocked.type-maintenance .hour-state { background: #FCE8B2; color: #8a6400; }
+
+.hour-tile.state-blocked.type-closure             { background: #FDF2F2; border-color: #EFB9B9; }
+.hour-tile.state-blocked.type-closure .hour-state { background: #F4CCCC; color: #9c2b2b; }
+
+.hour-tile.state-opened {
+  background: #F3F9F1;
+  border-color: var(--plum);
+  border-style: dashed;
+}
+.hour-tile.state-opened .hour-state { background: #E8DDEF; color: #5A3A78; }
+
+/* ---------- Add-a-block form ---------- */
+.block-form { max-width: 640px; margin: 0; }
+
+.field-group {
+  border: none;
+  border-top: 2px solid #EFEBE2;
+  padding: 18px 0 4px;
+  margin: 0 0 6px;
+}
+.field-group:first-of-type { border-top: none; padding-top: 0; }
+.field-group legend {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--navy);
+  padding: 0;
+  margin-bottom: 12px;
+}
+.legend-hint { font-weight: 600; font-size: 0.8rem; color: var(--muted); font-style: normal; }
+.req { color: var(--coral-dark); }
+
+.radio-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 2px solid #E4E0D8;
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+.radio-row input[type="radio"] { width: 22px; height: 22px; margin-top: 2px; flex: none; accent-color: var(--teal); }
+.radio-row span { display: block; font-weight: 700; color: var(--navy); font-size: 0.95rem; }
+.radio-row em { display: block; font-style: normal; font-weight: 600; font-size: 0.8rem; color: var(--muted); margin-top: 3px; }
+.radio-row:has(input:checked) { border-color: var(--teal); background: #F2F7FB; }
+
+.check-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 520px) { .check-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.check-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px;
+  border: 2px solid #E4E0D8;
+  border-radius: var(--radius);
+  margin-bottom: 0;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 0.92rem;
+}
+.check-row input[type="checkbox"] { width: 22px; height: 22px; flex: none; accent-color: var(--teal); }
+.check-row:has(input:checked) { border-color: var(--teal); background: #F2F7FB; }
+.check-row.is-disabled { opacity: 0.42; cursor: not-allowed; }
+
+.dow-grid { grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 520px) { .dow-grid { grid-template-columns: repeat(4, 1fr); } }
+
+.time-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.time-row label { flex: 1 1 140px; }
+
+.btn-block { width: 100%; margin-top: 10px; padding: 15px; font-size: 1rem; }
+
+.form-note-error {
+  color: var(--coral-dark);
+  font-weight: 800;
+  font-size: 0.92rem;
+  background: #FDF2F2;
+  border-left: 5px solid var(--coral-dark);
+  padding: 12px 14px;
+  border-radius: 8px;
+  margin: 0 0 16px;
+}
+
+/* ---------- Block list ---------- */
+.block-card-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.type-chip {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 4px 11px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.type-chip.badminton_members { background: #E8DDEF; color: #5A3A78; }
+.type-chip.maintenance       { background: #FCE8B2; color: #8a6400; }
+.type-chip.closure           { background: #F4CCCC; color: #9c2b2b; }
+.block-when { font-weight: 700; color: var(--navy); }
+.block-facilities { color: var(--muted); font-size: 0.88rem; margin: 4px 0 0; }
+.block-reason { color: var(--muted); font-size: 0.88rem; margin: 6px 0 0; font-style: italic; }
+.block-exceptions { color: var(--plum); font-size: 0.82rem; font-weight: 700; margin: 6px 0 0; }

@@ -35,55 +35,17 @@
     <div class="page-head">
       <a href="dashboard.html" class="back-link">&larr; Dashboard</a>
       <h2>🏛️ Hall &amp; Lawn Bookings</h2>
-      <button type="button" id="toggleBlocksBtn" class="btn btn-outline-dark btn-sm" style="margin-left:auto;">🚫 Manage Blocks</button>
-    </div>
-
-    <!-- Block/unblock tool, collapsed by default behind the "Manage Blocks"
-         toggle above so this stays reachable without scrolling as the
-         booking list grows. -->
-    <div id="blocksPanel" hidden>
-      <div class="page-head" style="margin-top:8px;">
-        <h2>🚫 Block / Unblock Slots</h2>
-      </div>
-      <form id="blockForm" class="panel-form">
-        <div class="form-row">
-          <label>Facility*
-            <select name="facility_id" required>
-              <option value="ac_hall">AC Hall</option>
-              <option value="non_ac_hall">Non-AC Hall</option>
-              <option value="lawn">Lawn</option>
-            </select>
-          </label>
-          <label>Reason
-            <input type="text" name="reason" placeholder="Maintenance, private event...">
-          </label>
-        </div>
-        <div class="form-row">
-          <label>From*
-            <input type="datetime-local" name="start_at" required>
-          </label>
-          <label>To*
-            <input type="datetime-local" name="end_at" required>
-          </label>
-        </div>
-        <button type="submit" class="btn btn-primary">Add Block</button>
-      </form>
-      <p id="blockAdminNote" class="muted small" hidden>Blocking a facility for maintenance is an Admin-only action — ask an Admin to add or remove one.</p>
-
-      <div id="blockList" class="enquiry-list" style="margin-top:16px;"></div>
-      <hr style="margin:32px 0;">
     </div>
 
     <div class="filter-row">
       <button class="filter-chip active" data-status="all">All</button>
       <button class="filter-chip" data-status="pending">Pending</button>
       <button class="filter-chip" data-status="approved">Approved</button>
-      <button class="filter-chip" data-status="rejected">Rejected</button>
       <button class="filter-chip" data-status="cancelled">Cancelled</button>
     </div>
 
-    <div class="form-row" style="margin:12px 0;">
-      <label>Search
+    <div class="list-controls-row">
+      <label class="search-field">Search
         <input type="search" id="bookingSearch" placeholder="Name or phone…">
       </label>
       <label>From
@@ -119,7 +81,19 @@
           </label>
         </div>
         <div class="modal-row">
-          <label>Date*
+          <label>Email
+            <input type="email" name="email">
+          </label>
+          <label>Facility*
+            <select name="facility_id" required>
+              <option value="ac_hall">AC Hall</option>
+              <option value="non_ac_hall">Non-AC Hall</option>
+              <option value="lawn">Lawn</option>
+            </select>
+          </label>
+        </div>
+        <div class="modal-row">
+          <label>Preferred date*
             <input type="date" name="booking_date" required>
           </label>
           <label>Slot*
@@ -176,6 +150,64 @@
       </form>
     </div>
   </div>
+
+  <!-- Edit Enquiry modal — for enquiry rows merged into this page's list
+       (item 2). Same unified-form shape as the booking modal; phone is
+       locked when editing an existing enquiry. -->
+  <div id="enquiryModal" class="modal-backdrop" hidden>
+    <div class="modal-card">
+      <button class="modal-close" id="closeEnquiryModalBtn" aria-label="Close">&times;</button>
+      <h3>Edit Enquiry</h3>
+      <form id="enquiryForm2">
+        <input type="hidden" name="id">
+        <div class="modal-row">
+          <label>Name*
+            <input type="text" name="customer_name" required minlength="2">
+          </label>
+          <label>Phone
+            <input type="tel" name="phone" class="locked-field" disabled>
+          </label>
+        </div>
+        <div class="modal-row">
+          <label>Email
+            <input type="email" name="email">
+          </label>
+          <label>Facility
+            <select name="facility_id">
+              <option value="">Not sure / multiple</option>
+              <option value="ac_hall">AC Hall</option>
+              <option value="non_ac_hall">Non-AC Hall</option>
+              <option value="lawn">Lawn</option>
+            </select>
+          </label>
+        </div>
+        <div class="modal-row">
+          <label>Preferred date
+            <input type="date" name="preferred_date">
+          </label>
+          <label>Guests
+            <input type="number" name="guests" min="1">
+          </label>
+        </div>
+        <label>Status
+          <select name="status">
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="follow_up">Follow-up</option>
+            <option value="converted">Converted</option>
+            <option value="lost">Lost</option>
+          </select>
+        </label>
+        <label>Message
+          <textarea name="message" rows="2"></textarea>
+        </label>
+        <p id="enquiryModalError" class="form-error" hidden></p>
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </main>
 
 <footer class="site-footer" id="contact">
@@ -187,9 +219,9 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="../js/supabase-client.js?v=20260903"></script>
-<script src="js/admin-auth.js?v=20260903"></script>
-<script src="js/list-controls.js?v=20260903"></script>
-<script src="js/bookings.js?v=20260903"></script>
+<script src="../js/supabase-client.js?v=20260904"></script>
+<script src="js/admin-auth.js?v=20260904"></script>
+<script src="js/list-controls.js?v=20260904"></script>
+<script src="js/bookings.js?v=20260904"></script>
 </body>
 </html>

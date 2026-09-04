@@ -48,14 +48,18 @@
     <div id="tab-activity" class="tab-panel">
       <div class="filter-row" style="align-items:center;">
         <input type="search" id="feedSearch" placeholder="Search name or phone…" style="flex:1;min-width:200px;padding:10px 14px;border-radius:999px;border:2px solid #E4E0D8;font-size:0.95rem;">
-        <button class="filter-chip active" data-type="all">All</button>
-        <button class="filter-chip" data-type="enquiry">Enquiries</button>
-        <button class="filter-chip" data-type="hall_lawn_booking">Hall &amp; Lawn</button>
-        <button class="filter-chip" data-type="hourly_booking">Pool &amp; Badminton</button>
+        <select id="feedTypeFilter" class="type-filter-select">
+          <option value="all">All</option>
+          <option value="enquiry">Enquiries</option>
+          <option value="club_house">Club house</option>
+          <option value="pool">Pool</option>
+          <option value="badminton">Badminton</option>
+        </select>
         <button class="btn btn-outline-dark btn-sm" id="openAddEnquiryBtn" style="margin-left:auto;">+ Add Enquiry</button>
+        <button class="btn btn-outline-dark btn-sm" id="openAddExpenseBtn">+ Add Expense</button>
         <button class="btn btn-primary btn-sm" id="openAddBookingBtn">+ Add Booking</button>
       </div>
-      <div class="form-row" style="margin:8px 0 12px;">
+      <div class="list-controls-row" style="margin:8px 0 12px;">
         <label>From
           <input type="date" id="feedDateFrom">
         </label>
@@ -77,7 +81,6 @@
       <div class="filter-row" style="align-items:center;">
         <button class="filter-chip active" data-month="current">This month</button>
         <button class="filter-chip" data-month="all">All time</button>
-        <button class="btn btn-primary btn-sm" id="openAddExpenseBtn" style="margin-left:auto;">+ Add Expense</button>
       </div>
 
       <div id="expenseList" class="enquiry-list">
@@ -185,8 +188,8 @@
         <label>Name*
           <input type="text" name="customer_name" required minlength="2">
         </label>
-        <label>Phone*
-          <input type="tel" name="phone" id="enquiryPhoneInput2" required inputmode="numeric" placeholder="10-digit mobile number">
+        <label>Phone
+          <input type="tel" name="phone" id="enquiryPhoneInput2" inputmode="numeric" placeholder="10-digit mobile number">
         </label>
       </div>
       <div class="modal-row">
@@ -233,9 +236,9 @@
 </div>
 
 <!-- Edit Booking modal — the feed's fast call-and-decide path: status
-     (approve/reject/cancel), payment, and (once cancelled) refund. Date/
-     slot/facility changes still go through the dedicated Bookings /
-     Pool & Badminton pages. Phone is shown but locked. -->
+     (approve/cancel), payment, and (once cancelled) refund. Slot/time
+     changes still go through the dedicated Bookings / Pool & Badminton
+     pages. Phone is shown but locked. -->
 <div id="editFeedBookingModal" class="modal-backdrop" hidden>
   <div class="modal-card">
     <button class="modal-close" id="closeEditFeedBookingBtn" aria-label="Close">&times;</button>
@@ -252,6 +255,17 @@
         </label>
       </div>
       <div class="modal-row">
+        <label>Email
+          <input type="email" name="email">
+        </label>
+        <label>Facility
+          <input type="text" name="facility_label" class="locked-field" disabled>
+        </label>
+      </div>
+      <div class="modal-row">
+        <label>Preferred date
+          <input type="date" name="booking_date">
+        </label>
         <label>Status
           <select name="status" id="editFeedBookingStatus"></select>
         </label>
@@ -418,9 +432,9 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="../js/supabase-client.js?v=20260903"></script>
-<script src="js/admin-auth.js?v=20260903"></script>
-<script src="js/list-controls.js?v=20260903"></script>
-<script src="js/manager-feed.js?v=20260903"></script>
+<script src="../js/supabase-client.js?v=20260904"></script>
+<script src="js/admin-auth.js?v=20260904"></script>
+<script src="js/list-controls.js?v=20260904"></script>
+<script src="js/manager-feed.js?v=20260904"></script>
 </body>
 </html>

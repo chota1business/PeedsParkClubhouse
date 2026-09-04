@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blocks &amp; Closures — PeedsPark Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/blocks.css?v=20260904">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="container admin-header-inner">
+    <a href="dashboard.html" class="brand">
+      <img src="../images/peedspark-logo.jpg" alt="PeedsPark Club House logo">
+      <div><strong>Peeds Park</strong><span>Admin</span></div>
+    </a>
+    <div class="admin-user">
+      <span id="staffName">Loading…</span>
+      <span id="staffRole" class="role-badge"></span>
+      <button id="logoutBtn" class="btn btn-outline-dark">Log Out</button>
+    </div>
+  </div>
+</header>
+
+<main class="container admin-main">
+  <div id="notAuthorised" hidden class="policy-card" style="border-left:6px solid var(--coral); max-width:520px; margin:60px auto;">
+    <h3>Not authorised</h3>
+    <p>Blocks &amp; Closures is Admin only. Ask an Admin to add or remove a block.</p>
+    <a class="btn btn-primary" href="dashboard.html">Back to Dashboard</a>
+  </div>
+
+  <div id="pageContent" hidden>
+    <div class="page-head">
+      <a href="dashboard.html" class="back-link">&larr; Dashboard</a>
+      <h2>🚫 Blocks &amp; Closures</h2>
+    </div>
+    <p class="muted" style="margin:-8px 0 20px;">One place to close any facility — for maintenance, a holiday, or the badminton members' playing hours.</p>
+
+    <!-- ============ TAB SWITCHER ============ -->
+    <div class="filter-row blocks-tabs">
+      <button class="filter-chip active" data-tab="day">📅 Day view</button>
+      <button class="filter-chip" data-tab="add">➕ Add a block</button>
+      <button class="filter-chip" data-tab="rules">📋 All blocks</button>
+    </div>
+
+    <!-- ============ TAB 1: DAY VIEW (open / re-block single hours) ============ -->
+    <section id="tabDay" class="blocks-tab">
+      <div class="day-picker">
+        <label>Facility
+          <select id="gridFacility"></select>
+        </label>
+        <label>Date
+          <input type="date" id="gridDate">
+        </label>
+      </div>
+
+      <p class="muted small day-help">Tap any blocked time to open it for public booking on this date only. Tap again to put the block back. The standing rule itself is not changed.</p>
+
+      <div class="grid-legend">
+        <span class="legend-item"><i class="swatch sw-open"></i>Open</span>
+        <span class="legend-item"><i class="swatch sw-members"></i>Members Only</span>
+        <span class="legend-item"><i class="swatch sw-maint"></i>Under Maintenance</span>
+        <span class="legend-item"><i class="swatch sw-closed"></i>Closed</span>
+        <span class="legend-item"><i class="swatch sw-opened"></i>Opened for today</span>
+      </div>
+
+      <div id="hourGrid" class="hour-grid">
+        <p class="muted center" style="padding:40px;">Pick a facility and date.</p>
+      </div>
+    </section>
+
+    <!-- ============ TAB 2: ADD A BLOCK ============ -->
+    <section id="tabAdd" class="blocks-tab" hidden>
+      <form id="blockForm" class="panel-form block-form">
+        <p class="form-note-error" id="blockFormError" hidden></p>
+
+        <fieldset class="field-group">
+          <legend>Request type <span class="req">*</span></legend>
+          <label class="radio-row">
+            <input type="radio" name="block_type" value="badminton_members" required>
+            <span><strong>Badminton time slot block</strong><em>Members' regular playing hours — repeats every day</em></span>
+          </label>
+          <label class="radio-row">
+            <input type="radio" name="block_type" value="maintenance">
+            <span><strong>Maintenance</strong><em>Repairs or cleaning for a set date and time</em></span>
+          </label>
+          <label class="radio-row">
+            <input type="radio" name="block_type" value="closure">
+            <span><strong>Facility closure</strong><em>Holiday or full-day shutdown</em></span>
+          </label>
+        </fieldset>
+
+        <fieldset class="field-group">
+          <legend>Facility <span class="req">*</span> <em class="legend-hint">tick one or more</em></legend>
+          <div id="facilityChecks" class="check-grid"></div>
+        </fieldset>
+
+        <!-- Maintenance: exact from/to date+time -->
+        <fieldset class="field-group" id="fieldsMaintenance" hidden>
+          <legend>When</legend>
+          <label>From <span class="req">*</span>
+            <input type="datetime-local" name="start_at">
+          </label>
+          <label>To <span class="req">*</span>
+            <input type="datetime-local" name="end_at">
+          </label>
+        </fieldset>
+
+        <!-- Closure: whole days -->
+        <fieldset class="field-group" id="fieldsClosure" hidden>
+          <legend>Which days</legend>
+          <label>From date <span class="req">*</span>
+            <input type="date" name="closure_from">
+          </label>
+          <label>To date <span class="req">*</span>
+            <input type="date" name="closure_to">
+          </label>
+          <p class="muted small">Closed all day, start date to end date inclusive.</p>
+        </fieldset>
+
+        <!-- Badminton members: recurring daily time window -->
+        <fieldset class="field-group" id="fieldsMembers" hidden>
+          <legend>Every day, between</legend>
+          <div class="time-row">
+            <label>From <span class="req">*</span>
+              <input type="time" name="start_time" step="3600" value="05:00">
+            </label>
+            <label>To <span class="req">*</span>
+              <input type="time" name="end_time" step="3600" value="08:00">
+            </label>
+          </div>
+          <p class="muted small">Repeats on the days ticked below until you stop it.</p>
+          <div id="dowChecks" class="check-grid dow-grid"></div>
+          <label>Stop after this date <em class="legend-hint">optional</em>
+            <input type="date" name="valid_to">
+          </label>
+        </fieldset>
+
+        <label>Reason <em class="legend-hint">optional — shown to staff only</em>
+          <input type="text" name="reason" maxlength="120" placeholder="Members playing hours, pump repair, Onam holiday…">
+        </label>
+
+        <button type="submit" class="btn btn-primary btn-block" id="saveBlockBtn">Add Block</button>
+      </form>
+    </section>
+
+    <!-- ============ TAB 3: ALL BLOCKS ============ -->
+    <section id="tabRules" class="blocks-tab" hidden>
+      <div class="filter-row">
+        <button class="filter-chip active" data-blockfilter="all">All</button>
+        <button class="filter-chip" data-blockfilter="badminton_members">Badminton members</button>
+        <button class="filter-chip" data-blockfilter="maintenance">Maintenance</button>
+        <button class="filter-chip" data-blockfilter="closure">Closures</button>
+      </div>
+      <div id="blockList" class="enquiry-list">
+        <p class="muted center" style="padding:40px;">Loading…</p>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../js/supabase-client.js?v=20260904"></script>
+<script src="js/admin-auth.js?v=20260904"></script>
+<script src="js/blocks.js?v=20260904"></script>
+</body>
+</html>

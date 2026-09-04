@@ -154,9 +154,12 @@ function openEnquiryModal(enquiry) {
   document.getElementById("enquiryModalTitle").textContent = enquiry ? "Edit Enquiry" : "Add Enquiry";
   form.elements["id"].value = enquiry?.id || "";
   const statusWrap = document.getElementById("enquiryStatusFieldWrap");
+  const phoneInput = form.elements["phone"];
   if (enquiry) {
     form.elements["customer_name"].value = enquiry.customer_name || "";
-    form.elements["phone"].value = enquiry.phone || "";
+    phoneInput.value = enquiry.phone || "";
+    phoneInput.disabled = true; // locked once an enquiry exists — user request
+    phoneInput.classList.add("locked-field");
     form.elements["email"].value = enquiry.email || "";
     form.elements["facility_id"].value = enquiry.facility_id || "";
     form.elements["preferred_date"].value = enquiry.preferred_date || "";
@@ -165,6 +168,8 @@ function openEnquiryModal(enquiry) {
     form.elements["status"].value = enquiry.status || "new";
     statusWrap.hidden = false;
   } else {
+    phoneInput.disabled = false;
+    phoneInput.classList.remove("locked-field");
     statusWrap.hidden = true;
   }
   modal.hidden = false;
@@ -175,7 +180,9 @@ async function submitEnquiryModal(e) {
   const form = e.target;
   const data = Object.fromEntries(new FormData(form).entries());
 
-  if (!/^[0-9]{10}$/.test(data.phone)) {
+  // Phone is locked (excluded from the form payload) once an enquiry
+  // already exists — only validate/require it for a brand-new enquiry.
+  if (!data.id && !/^[0-9]{10}$/.test(data.phone)) {
     alert("Please enter a valid 10-digit mobile number.");
     return;
   }
@@ -190,11 +197,11 @@ async function submitEnquiryModal(e) {
 
   if (data.id) {
     // Editing an existing enquiry — direct update (enquiries_staff_update RLS).
+    // Phone is not included: it's locked in the edit form (user request).
     const { error } = await supabaseClient
       .from("enquiries")
       .update({
         customer_name: data.customer_name.trim(),
-        phone: data.phone.trim(),
         email: data.email?.trim() || null,
         facility_id: data.facility_id || null,
         preferred_date: data.preferred_date || null,
