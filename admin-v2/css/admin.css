@@ -34,6 +34,26 @@
 .tile-counts .count-chip { font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--gold, #C98A2C); color: #fff; }
 .tile-counts .count-chip.zero { background: #E4E0D8; color: var(--muted); }
 
+/* "More tools" collapsible — de-clutters the Admin dashboard by tucking
+   rarely-used tiles (Staff Management, Blocks & Closures, Calendar Feed)
+   behind a single tap instead of showing them as full tiles every visit. */
+.more-tools-toggle {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; margin-top: 22px; padding: 14px 20px;
+  background: var(--white); border: 2px solid var(--gold, #C98A2C);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  font-weight: 700; font-size: 1rem; color: var(--navy);
+  cursor: pointer; text-align: left;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.more-tools-toggle:hover { background: #FFF8EC; transform: translateY(-1px); }
+.more-tools-toggle .more-tools-chevron {
+  margin-left: auto; font-size: 1.1rem; color: var(--coral-dark);
+  transition: transform 0.2s ease;
+}
+.more-tools-toggle[aria-expanded="true"] .more-tools-chevron { transform: rotate(180deg); }
+.more-tools-grid { margin-top: 16px; }
+
 /* Shared admin page chrome */
 .page-head { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
 .back-link { color: var(--teal-dark); font-weight: 700; }

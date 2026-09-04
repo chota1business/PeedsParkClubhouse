@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (staff.role === "admin") {
     document.getElementById("adminOnlyTiles")?.removeAttribute("hidden");
+    loadReviewsPendingCount(); // Reviews is Admin-only, so only load this for admins
   } else {
     // Manager's most-used tool day to day is Manager Feed — move it to the
     // front of its row (Enquiries / Customers / Manager Feed) for Manager
@@ -26,14 +27,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("dashboardContent").hidden = false;
 
+  const moreToolsToggle = document.getElementById("moreToolsToggle");
+  const moreToolsGrid = document.getElementById("moreToolsGrid");
+  moreToolsToggle?.addEventListener("click", () => {
+    const isOpen = moreToolsToggle.getAttribute("aria-expanded") === "true";
+    moreToolsToggle.setAttribute("aria-expanded", String(!isOpen));
+    moreToolsGrid.hidden = isOpen;
+  });
+
   loadFacilityCounts();
-  loadReviewsPendingCount();
 });
 
 // Pending-reviews badge on the Reviews tile — a quick nudge that
 // something's waiting in the moderation queue, same count-chip look as
 // the facility badges above but sourced directly from the reviews table
-// (no RPC needed: staff can already SELECT all reviews per RLS).
+// (no RPC needed: staff can already SELECT all reviews per RLS — and since
+// Reviews is now Admin-only, this is only ever called for an admin session,
+// see the role check above).
 async function loadReviewsPendingCount() {
   const { count, error } = await supabaseClient
     .from("reviews")

@@ -32,29 +32,49 @@
 
   <div id="dashboardContent" hidden>
     <h2>Welcome back<span id="welcomeName"></span></h2>
-    <p class="muted">Phases 2–6 will fill these in with live data. Phase 1 confirms your role-based access works.</p>
+    
+    <div id="adminOnlyTiles" hidden>
+      <div class="card-grid" style="margin-top:24px;">
+        <a class="facility-card card-coral admin-tile" href="analytics.html">
+          <h3>📊 Analytics</h3>
+          <p>Cash inflow, occupancy, enquiry funnel, status snapshot, revenue by facility.</p>
+          <span class="tile-status ready">Open →</span>
+        </a>
+      </div>
 
-    <div id="adminOnlyTiles" class="card-grid" style="margin-top:24px;" hidden>
-      <a class="facility-card card-coral admin-tile" href="analytics.html">
-        <h3>📊 Analytics</h3>
-        <p>Cash inflow, occupancy, enquiry funnel, status snapshot, revenue by facility.</p>
-        <span class="tile-status ready">Open →</span>
-      </a>
-      <a id="staffTile" class="facility-card card-navy admin-tile" href="staff.html">
-        <h3>👥 Staff Management</h3>
-        <p>Admin only — invite and manage staff accounts.</p>
-        <span class="tile-status ready">Open →</span>
-      </a>
-      <a id="blocksTile" class="facility-card card-plum admin-tile" href="blocks.html">
-        <h3>🚫 Blocks &amp; Closures</h3>
-        <p>Admin only — maintenance, holidays, and badminton members' hours, all in one place.</p>
-        <span class="tile-status ready">Open →</span>
-      </a>
-      <a class="facility-card card-brick admin-tile" href="calendar-feed.html">
-        <h3>📅 Calendar Feed</h3>
-        <p>Admin only — subscribe to Club House bookings in Google Calendar.</p>
-        <span class="tile-status ready">Open →</span>
-      </a>
+      <!-- Staff Management / Blocks & Closures / Calendar Feed are all used
+           only occasionally — tucked behind this collapsed toggle instead of
+           sitting as full tiles on every visit, so the dashboard doesn't feel
+           crowded day to day. Collapsed by default on every page load
+           (deliberately not remembered) — this is a light declutter, not a
+           hide-away, so it stays a single obvious tap. -->
+      <button type="button" id="moreToolsToggle" class="more-tools-toggle" aria-expanded="false" aria-controls="moreToolsGrid">
+        <span>⚙️ More tools</span>
+        <span class="more-tools-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div id="moreToolsGrid" class="card-grid more-tools-grid" hidden>
+        <a id="staffTile" class="facility-card card-navy admin-tile" href="staff.html">
+          <h3>👥 Staff Management</h3>
+          <p>Admin only — invite and manage staff accounts.</p>
+          <span class="tile-status ready">Open →</span>
+        </a>
+        <a id="blocksTile" class="facility-card card-plum admin-tile" href="blocks.html">
+          <h3>🚫 Blocks &amp; Closures</h3>
+          <p>Admin only — maintenance, holidays, and badminton members' hours, all in one place.</p>
+          <span class="tile-status ready">Open →</span>
+        </a>
+        <a class="facility-card card-brick admin-tile" href="calendar-feed.html">
+          <h3>📅 Calendar Feed</h3>
+          <p>Admin only — subscribe to Club House bookings in Google Calendar.</p>
+          <span class="tile-status ready">Open →</span>
+        </a>
+        <a class="facility-card card-gold admin-tile" href="reviews.html">
+          <h3>⭐ Reviews</h3>
+          <p>Admin only — approve, reject and feature customer reviews submitted from the site.</p>
+          <p class="tile-counts" id="reviewsPendingCount" hidden></p>
+          <span class="tile-status ready">Open →</span>
+        </a>
+      </div>
     </div>
 
     <div id="row1Tiles" class="card-grid" style="margin-top:24px;">
@@ -79,7 +99,7 @@
     </div>
 
     <div id="row2Tiles" class="card-grid" style="margin-top:24px;">
-      <a class="facility-card card-coral admin-tile" href="enquiries.html">
+      <!--a class="facility-card card-coral admin-tile" href="enquiries.html">
         <h3>📋 Enquiries</h3>
         <p>View and update customer enquiries.</p>
         <span class="tile-status ready">Open →</span>
@@ -88,16 +108,10 @@
         <h3>🧑‍🤝‍🧑 Customers</h3>
         <p>Repeat customers, activity history, staff notes.</p>
         <span class="tile-status ready">Open →</span>
-      </a>
+      </a-->
       <a class="facility-card card-brick admin-tile" href="manager-feed.html">
         <h3>📞 Manager Feed</h3>
         <p>Every enquiry &amp; booking in one list — call, act, log phoned-in bookings and expenses.</p>
-        <span class="tile-status ready">Open →</span>
-      </a>
-      <a class="facility-card card-gold admin-tile" href="reviews.html">
-        <h3>⭐ Reviews</h3>
-        <p>Approve, reject and feature customer reviews submitted from the site.</p>
-        <p class="tile-counts" id="reviewsPendingCount" hidden></p>
         <span class="tile-status ready">Open →</span>
       </a>
     </div>
@@ -115,6 +129,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../js/supabase-client.js?v=20260904"></script>
 <script src="js/admin-auth.js?v=20260904"></script>
-<script src="js/dashboard.js?v=20260904-5"></script>
+<script src="js/dashboard.js?v=20260904-7"></script>
 </body>
 </html>

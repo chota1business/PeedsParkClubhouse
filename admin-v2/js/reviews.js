@@ -1,9 +1,9 @@
-// PeedsPark Admin — Reviews moderation.
-// Any active staff (Admin or Manager) can approve/reject/feature a review —
-// this is a day-to-day task, same tier as approving a booking. Permanently
-// deleting a review is Admin only, matching the reviews_admin_delete RLS
-// policy on the database side (a Manager clicking Delete would just get an
-// RLS error back — the button is hidden for them so that never happens).
+// PeedsPark Admin — Reviews moderation. Admin only (owner decision), same
+// tier as Blocks & Closures — enforced here AND by RLS (reviews_admin_select
+// / reviews_admin_update / reviews_admin_delete on the database side), so a
+// Manager who navigates straight to this URL gets the same "not authorised"
+// panel every other Admin-only page uses, and would be refused by the
+// database anyway even if they somehow reached the page.
 
 const STATUS_COLORS = {
   pending: "#D9A441",
@@ -35,6 +35,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("staffName").textContent = currentStaff.full_name;
   document.getElementById("staffRole").textContent = currentStaff.role;
+
+  if (currentStaff.role !== "admin") {
+    document.getElementById("notAuthorised")?.removeAttribute("hidden");
+    return;
+  }
   document.getElementById("pageContent").hidden = false;
 
   document.querySelectorAll(".filter-chip").forEach((chip) => {
@@ -135,7 +140,7 @@ function rowHtml(r) {
         ${r.status !== "pending" ? `<button class="btn btn-outline-dark btn-sm" data-unpending="${r.id}">↺ Back to Pending</button>` : ""}
         ${r.status === "approved" ? `<button class="btn btn-outline-dark btn-sm" data-feature="${r.id}">${r.is_featured ? "☆ Unfeature" : "★ Feature"}</button>` : ""}
         <a class="btn btn-outline-dark btn-sm" href="${waLink}" target="_blank" rel="noopener">💬 WhatsApp</a>
-        ${currentStaff.role === "admin" ? `<button class="btn btn-outline-dark btn-sm" data-delete="${r.id}" style="border-color:#C0392B;color:#C0392B;">🗑 Delete</button>` : ""}
+        <button class="btn btn-outline-dark btn-sm" data-delete="${r.id}" style="border-color:#C0392B;color:#C0392B;">🗑 Delete</button>
       </div>
     </div>`;
 }
