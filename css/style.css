@@ -240,6 +240,31 @@ a.facility-card { display: block; transition: transform 0.15s ease, box-shadow 0
 .amenity-card h3 { margin: 0 0 6px; font-size: 1.1rem; }
 .amenity-card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
 
+/* Amenity cards with a photo background (owner-supplied photos) instead
+   of a plain icon card, so they read as real places on site rather than
+   just icons. No icon on these — the photo carries it. Bigger photo area,
+   a compact caption strip at the bottom with a stronger gradient so the
+   text stays legible over any photo. */
+.amenity-card.amenity-card-photo {
+  position: relative; background-size: cover; background-position: center;
+  border: none; overflow: hidden; min-height: 280px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 16px 18px;
+}
+.amenity-card-photo::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(23,32,42,0.05) 0%, rgba(23,32,42,0.92) 75%);
+}
+.amenity-card-photo > * { position: relative; z-index: 1; }
+.amenity-card-photo h3 {
+  color: var(--white); margin: 0 0 4px; font-size: 1.05rem;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.55);
+}
+.amenity-card-photo p {
+  color: var(--white); opacity: 0.96; margin: 0; font-size: 0.85rem;
+  line-height: 1.35; text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
 /* Events chips */
 .events { padding: 80px 0; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 20px; }
@@ -445,7 +470,7 @@ footer{background:#315f88;color:#ffffff;padding:25px 0}
 /* Reviews — public "what guests say" section + Write a Review form.
    Soft gold/cream tint deliberately distinct from the white Gallery
    above and the steel-blue Enquire band below, for visual rhythm. */
-.reviews { padding: 80px 0; background: #FBF3DE; }
+.reviews { padding: 80px 0; background: #DCECF7; } /* light blue, matches .amenities' #DCECF7 tint — user request */
 .reviews-grid { display: grid; gap: 20px; grid-template-columns: 1fr; margin-top: 32px; }
 @media (min-width: 640px) { .reviews-grid { grid-template-columns: 1fr 1fr; } }
 @media (min-width: 960px) { .reviews-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -460,7 +485,7 @@ footer{background:#315f88;color:#ffffff;padding:25px 0}
 .review-card .review-meta {
   display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
   font-weight: 700; color: var(--teal-dark); font-size: 0.9rem;
-  border-top: 1px solid #EDE0BE; padding-top: 10px;
+  border-top: 1px solid #D3E4EE; padding-top: 10px;
 }
 .review-card .review-meta span:last-child { font-weight: 600; color: var(--muted); font-size: 0.8rem; text-align: right; }
 .reviews-empty { text-align: center; color: var(--muted); font-style: italic; margin-top: 32px; }

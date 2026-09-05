@@ -196,6 +196,21 @@ async function submitEnquiryModal(e) {
   submitBtn.textContent = "Saving...";
 
   if (data.id) {
+    // Picking "Converted" as the status here doesn't just relabel the
+    // enquiry — on its own that would leave a "Converted" enquiry with no
+    // actual booking behind it. So changing status TO Converted (from
+    // anything else) routes through the real Convert to Booking form
+    // instead of a plain update, same as the row's own Convert button —
+    // one flow either way, always ending in a real Bookings row.
+    const original = allEnquiries.find((x) => x.id === data.id);
+    if (data.status === "converted" && original?.status !== "converted") {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Save Enquiry";
+      document.getElementById("enquiryModal").hidden = true;
+      openConvertModal(original);
+      return;
+    }
+
     // Editing an existing enquiry — direct update (enquiries_staff_update RLS).
     // Phone is not included: it's locked in the edit form (user request).
     const { error } = await supabaseClient
