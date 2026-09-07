@@ -3,6 +3,24 @@
 // each page doesn't need to hand-write which link gets class="active".
 
 document.addEventListener("DOMContentLoaded", () => {
+  const focusEnquiryName = () => {
+    if (!["#name", "#enquire"].includes(location.hash)) return;
+    const name = document.querySelector("#enquiryForm #name");
+    if (!name) return;
+    name.focus({ preventScroll: true });
+    name.scrollIntoView({ block: "start", behavior: "instant" });
+  };
+  document.querySelectorAll('a[href="#name"]').forEach(link => {
+    link.addEventListener("click", event => {
+      event.preventDefault();
+      document.getElementById("mainNav")?.classList.remove("open");
+      history.pushState(null, "", "#name");
+      focusEnquiryName();
+    });
+  });
+  window.addEventListener("hashchange", focusEnquiryName);
+  window.addEventListener("load", focusEnquiryName, { once: true });
+  focusEnquiryName();
   const navToggle = document.getElementById("navToggle");
   const mainNav = document.getElementById("mainNav");
   if (navToggle && mainNav) {

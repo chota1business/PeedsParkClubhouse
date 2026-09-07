@@ -71,6 +71,24 @@ h3 { font-size: 1.25rem; }
 .btn-blue { background: var(--teal); color: var(--white); }
 .btn-blue:hover { background: var(--teal-dark); color: var(--white); }
 .btn-outline { background: transparent; border-color: var(--white); color: var(--white); }
+.btn.btn-gold-gloss {
+  background: linear-gradient(180deg, #fff2b8 0%, #efd071 44%, #dbaf40 48%, #f0cb66 100%);
+  color: #382a0c;
+  border: 2px solid #ffe9a2;
+  border-radius: 999px;
+  box-shadow: inset 0 2px 1px rgba(255,255,255,.8), inset 0 -2px 2px rgba(126,85,13,.2), 0 3px 0 #a47820, 0 6px 12px rgba(0,0,0,.2);
+  text-shadow: 0 1px 0 rgba(255,255,255,.45);
+}
+.btn.btn-gold-gloss:hover {
+  background: linear-gradient(180deg, #fff7d4 0%, #f7dd8a 44%, #e6bd54 48%, #f5d57a 100%);
+  color: #382a0c;
+}
+.btn.btn-gold-gloss:focus-visible { outline: 3px solid #285c5c; outline-offset: 4px; }
+.btn.btn-gold-gloss:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 2px rgba(126,85,13,.2), 0 1px 0 #a47820;
+}
+#enquiryForm #name { scroll-margin-top: 140px; }
 .btn-lg { padding: 16px 30px; font-size: 1.05rem; }
 .btn-sm { padding: 8px 16px; font-size: 0.85rem; }
 .btn-nav { display: none; }
@@ -142,6 +160,15 @@ h3 { font-size: 1.25rem; }
   background: linear-gradient(90deg, rgba(6,25,27,.55), rgba(6,25,27,.25));
 }
 .hero.hero-photo .container { position: relative; z-index: 1; }
+.clubhouse-hero .clubhouse-hero-banner {
+  display: block;
+  margin: 0 auto 28px;
+  width: min(100%, 320px);
+  height: auto;
+  border: 3px solid #d6ecec;
+  border-radius: 6px;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, .25);
+}
 .hero.hero-photo h1 { font-size: clamp(1.875rem, 5vw, 3.25rem); max-width: 800px; }
 
 /* Homepage hero: text on the left, quick-jump buttons to the 3 facility
@@ -548,5 +575,4 @@ footer{background:#315f88;color:#ffffff;padding:25px 0}
   width: 100%;
   height: auto;
   object-fit: contain;
-}  
-
+}
