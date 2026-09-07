@@ -142,18 +142,18 @@ function clearFormError(noteId) {
   }
 }
 
+// Keep operational block reasons internal; normalize only the rendered status.
+function customerFacingStatus(status) {
+  if (status === "Available") return "Available";
+  if (status === "Past") return "Past";
+  return "Not Available";
+}
+
 function statusBadgeStyle(status) {
   if (status === "Available") return "background:#D9EAD3;color:#2e6b2e;";
-  if (status === "Pending") return "background:#FCE8B2;color:#8a6400;";
-  // Block labels come straight from the database (block_type_label) so a
-  // customer sees why a time isn't bookable, not just that it isn't.
-  if (status === "Members Only") return "background:#E8DDEF;color:#5A3A78;";
-  if (status === "Under Maintenance") return "background:#FCE8B2;color:#8a6400;";
-  if (status === "Closed") return "background:#F4CCCC;color:#9c2b2b;";
-  if (status === "Blocked") return "background:#e0e0e0;color:#555;";
-  if (status === "Reserved") return "background:#E8DDEF;color:#5A3A78;";
+  if (status === "Not Available") return "background:#F4CCCC;color:#9c2b2b;";
   if (status === "Past") return "background:#e0e0e0;color:#777777;";
-  return "background:#F4CCCC;color:#9c2b2b;"; // Booked / Full
+  return "background:#F4CCCC;color:#9c2b2b;";
 }
 
 // Human-readable date for the "date + slot being booked" recap shown once
@@ -192,9 +192,10 @@ function slotBadgeHtml(status) {
 }
 
 function slotRowHtml(label, status, index) {
-  const right = status === "Available"
-    ? `<button type="button" class="btn btn-primary btn-sm" data-slot-index="${index}">Request to Book</button>`
-    : slotBadgeHtml(status);
+  const displayStatus = customerFacingStatus(status);
+  const right = displayStatus === "Available"
+    ? `<button type="button" class="btn btn-primary btn-sm" style="${statusBadgeStyle(displayStatus)}" data-slot-index="${index}">Reserve</button>`
+    : slotBadgeHtml(displayStatus);
   return `
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eee;">
       <span style="font-weight:700;">${label}</span>
