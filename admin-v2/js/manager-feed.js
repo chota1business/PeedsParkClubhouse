@@ -164,8 +164,7 @@ function feedRowHtml(r) {
   // Every row now gets the same three actions — Edit, WhatsApp, Call. Edit
   // is where status changes happen (enquiry status, or approve/reject/
   // cancel for bookings) — no more inline status dropdown or separate
-  // Approve/Cancel buttons. Enquiries additionally keep "Convert to
-  // Booking" since that's a distinct action, not a status change.
+  // Approve/Cancel buttons. Conversion lives inside the enquiry edit form.
   let actionsHtml = "";
   if (r.record_type === "enquiry") {
     actionsHtml = `
@@ -438,15 +437,7 @@ async function submitEnquiryModal(e) {
   submitBtn.textContent = "Saving...";
 
   if (data.id) {
-    // Picking "Converted" as the status here doesn't just relabel the
-    // enquiry — on its own that would leave a "Converted" enquiry with no
-    // actual booking behind it. So changing status TO Converted (from
-    // anything else) routes through the real Convert to Booking form
-    // instead of a plain update, same as the row's own Convert button —
-    // one flow either way, always ending in a real Bookings row.
-    const originalRow = allFeed.find((x) => x.id === data.id);
-
-
+    // New conversions are intercepted by AdminActions and saved atomically.
     // Editing an existing enquiry — status changes now happen here instead
     // of the old inline per-row dropdown. Phone is not included: it's
     // locked in the edit form (user request).

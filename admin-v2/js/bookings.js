@@ -393,14 +393,10 @@ async function submitEnquiryModal(e) {
     updated_at: new Date().toISOString(),
   };
 
-  // This page's Edit Enquiry modal has no Convert-to-Booking form of its
-  // own (that only exists on the Enquiries and Manager Feed pages) — so
-  // setting status to "Confirm Booking" here can't be allowed to silently
-  // relabel the enquiry with no real booking behind it. Send staff to a
-  // page that can actually create the booking instead.
+  // Fail closed if the shared conversion handler has not run.
   const originalEnquiry = allEnquiries.find(en => en.id === data.id);
   if (data.status === "converted" && originalEnquiry?.status !== "converted") {
-    errorEl.textContent = "To confirm this enquiry into a booking, edit it from the Enquiries or Manager Feed page — that opens the booking form with slot and payment details.";
+    errorEl.textContent = "Fill in the booking details in this edit form, then save and convert.";
     errorEl.hidden = false;
     return;
   }

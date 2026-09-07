@@ -129,6 +129,8 @@ const AdminActions = (() => {
   function syncEnquiry() {
     const form = document.getElementById("enquiryForm2");
     const enabled = !!currentEnquiry && currentEnquiry.status !== "converted" && form.elements.status.value === "converted";
+    form.querySelector("[data-convert-enquiry]").hidden = !currentEnquiry || currentEnquiry.status === "converted" || enabled;
+    form.elements.status.querySelector('option[value="converted"]').textContent = currentEnquiry?.status === "converted" ? "Converted" : "Convert to booking";
     syncDetails(form, enabled);
     form.elements.facility_id.required = enabled;
     form.elements.preferred_date.required = enabled;
@@ -191,8 +193,12 @@ const AdminActions = (() => {
         const data = Object.fromEntries(new FormData(form));
         if (!config.facilityIds().includes(data.facility_id)) throw new Error("Choose a facility you can manage.");
         if (!data.description.trim()) throw new Error("Enter an expense description.");
-        const { error: failure } = await supabaseClient.from("expenses").insert({ ...data, description: data.description.trim(), amount: Number(data.amount), created_by: config.staff.id });
+        const { data: inserted, error: failure } = await supabaseClient.from("expenses").insert({ ...data, description: data.description.trim(), amount: Number(data.amount), created_by: config.staff.id }).select("id").single();
         if (failure) throw failure;
+        const { error: auditError } = await supabaseClient.from("audit_log").insert({ actor_id: config.staff.id,
+          action: "log_expense", table_name: "expenses", record_id: inserted?.id || null,
+          details: { category: data.category, amount: Number(data.amount), facility_id: data.facility_id } });
+        if (auditError) console.error("Expense saved; audit entry failed:", auditError);
         expense.hidden = true; notice("Expense saved. You can review it in Manager Feed → Expenses.");
       } catch (err) { error(form, err.message || "Couldn't save this expense."); }
       finally { button.disabled = false; }

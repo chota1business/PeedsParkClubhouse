@@ -54,3 +54,9 @@
 }
 .expense-summary .stat-tile strong { display: block; font-size: 1.4rem; color: var(--navy); }
 .expense-summary .stat-tile span { color: var(--muted); font-size: 0.8rem; }
+
+.booking-details-fields { margin: 18px 0; padding: 14px; border: 1px solid #acd9d9; border-radius: 12px; }
+.booking-details-fields legend { padding: 0 6px; font-weight: 700; }
+.modal-card .inline-check { display: flex; align-items: center; gap: 8px; }
+.modal-card .inline-check input { width: auto; }
+@media (max-width: 480px) { .modal-card .modal-row { grid-template-columns: 1fr; } }

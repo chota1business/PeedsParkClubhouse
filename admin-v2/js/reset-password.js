@@ -6,13 +6,16 @@
 // reveal the form, so a plain visit to this page with no valid token can't
 // set anyone's password.
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   if (!supabaseClient) {
     showInvalid();
     return;
   }
 
   let recoveryConfirmed = false;
+  const params = new URLSearchParams(window.location.search);
+  const tokenHash = params.get("token_hash");
+  let directRecoveryPending = !!tokenHash;
 
   supabaseClient.auth.onAuthStateChange((event) => {
     if (event === "PASSWORD_RECOVERY") {
@@ -22,11 +25,25 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Admin-generated setup links can verify directly without a redirect hop.
+  // Remove the one-time token from browser history before exchanging it.
+  if (tokenHash) {
+    window.history.replaceState(null, "", window.location.pathname);
+    try {
+      const { data, error } = await supabaseClient.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" });
+      if (error || !data.session) { showInvalid(); return; }
+      recoveryConfirmed = true;
+      document.getElementById("resetPending").hidden = true;
+      document.getElementById("resetForm").hidden = false;
+    } catch { showInvalid(); return; }
+    finally { directRecoveryPending = false; }
+  }
+
   // If the recovery redirect already landed before this listener attached
   // (e.g. the browser fired the event on page load, before DOMContentLoaded's
   // own handler ran), fall back to checking for a live session.
   setTimeout(async () => {
-    if (recoveryConfirmed) return;
+    if (recoveryConfirmed || directRecoveryPending) return;
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
       recoveryConfirmed = true;

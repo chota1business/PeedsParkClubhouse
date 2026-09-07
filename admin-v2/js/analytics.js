@@ -16,6 +16,11 @@ const FUNNEL_STAGES = [
 ];
 
 let staff = null;
+let selectedRange;
+let expenseRows = [];
+let expenseControls;
+let expenseRequest = 0;
+let activeView = "overview";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const session = await requireStaffSession();
@@ -34,6 +39,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   document.getElementById("pageContent").hidden = false;
+  expenseControls = createListControls({
+    searchInputId: "expenseSearch", pagerContainerId: "expensePager", pageSize: 15,
+    searchText: row => `${row.description || ""} ${row.category || ""} ${FACILITY_LABELS[row.facility_id] || "General"} ${row.paid_by || ""}`,
+    onChange: renderExpenses,
+  });
+  document.querySelectorAll("[data-analytics-view]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeView = button.dataset.analyticsView;
+      document.querySelectorAll("[data-analytics-view]").forEach(tab => {
+        const active = tab === button;
+        tab.classList.toggle("active", active);
+        tab.setAttribute("aria-pressed", String(active));
+      });
+      document.getElementById("overviewPanel").hidden = activeView !== "overview";
+      document.getElementById("expensesPanel").hidden = activeView !== "expenses";
+      if (activeView === "expenses") loadExpenses();
+    });
+  });
 
   document.querySelectorAll("[data-range]").forEach((chip) => {
     chip.addEventListener("click", () => {
@@ -81,6 +104,8 @@ function rangeFromPreset(preset) {
 }
 
 async function loadStats(start, end) {
+  selectedRange = { start, end };
+  if (activeView === "expenses") loadExpenses();
   document.getElementById("statsContent").hidden = true;
   document.getElementById("loadingNote").hidden = false;
   document.getElementById("loadingNote").textContent = "Loading analytics…";
@@ -97,6 +122,59 @@ async function loadStats(start, end) {
 
   renderStats(data);
   document.getElementById("statsContent").hidden = false;
+}
+
+async function loadExpenses() {
+  if (staff?.role !== "admin") return;
+  const request = ++expenseRequest;
+  const { start, end } = selectedRange;
+  const note = document.getElementById("expensesNote");
+  expenseRows = [];
+  renderExpenses();
+  note.textContent = "Loading expenses…";
+  try {
+    // Fetch all pages so totals remain accurate beyond the API's row limit.
+    const rows = [];
+    for (let offset = 0; ; offset += 500) {
+      const { data, error } = await supabaseClient.from("expenses")
+        .select("id,expense_date,category,amount,description,facility_id,paid_by")
+        .gte("expense_date", start).lte("expense_date", end)
+        .order("expense_date", { ascending: false }).order("id")
+        .range(offset, offset + 499);
+      if (request !== expenseRequest) return;
+      if (error) throw error;
+      rows.push(...(data || []));
+      if (!data || data.length < 500) break;
+    }
+    expenseRows = rows;
+    expenseControls.resetPage();
+    renderExpenses();
+    note.textContent = rows.length ? "" : "No expenses in this period.";
+  } catch (error) {
+    if (request === expenseRequest) note.textContent = "Couldn't load expenses: " + error.message;
+  }
+}
+
+function renderExpenses() {
+  const rows = expenseControls.apply(expenseRows);
+  const page = expenseControls.paginate(rows);
+  document.getElementById("expensesTotal").textContent = `${rows.length} expenses · ₹${rows.reduce((sum, row) => sum + Number(row.amount || 0), 0).toFixed(2)}`;
+  const list = document.getElementById("expensesList");
+  list.replaceChildren();
+  for (const row of page.rows) {
+    const card = document.createElement("article");
+    card.className = "analytics-section";
+    const title = document.createElement("h4");
+    title.textContent = `${row.expense_date} · ₹${Number(row.amount).toFixed(2)} · ${FACILITY_LABELS[row.facility_id] || "General"}`;
+    const description = document.createElement("p");
+    description.textContent = `${row.category || "Other"} — ${row.description || "No description"}`;
+    const paidBy = document.createElement("p");
+    paidBy.textContent = `Paid by: ${row.paid_by || "Not specified"}`;
+    card.append(title, description, paidBy);
+    list.append(card);
+  }
+  if (expenseRows.length && !rows.length) list.textContent = "No expenses match your search.";
+  expenseControls.renderPager(rows.length);
 }
 
 function renderStats(d) {
