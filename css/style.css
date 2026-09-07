@@ -205,6 +205,8 @@ h3 { font-size: 1.25rem; }
 
 /* About */
 .about { padding: 70px 0; background: var(--white); }
+.about.clubhouse-welcome { background: #DCECF7; }
+.clubhouse-welcome .lead { font-size: 1rem; }
 .about h2 { font-size: clamp(2rem, 4vw, 3rem); }
 .lead { max-width: 640px; margin: 0 auto; font-size: 1.125rem; }
 
@@ -442,6 +444,23 @@ footer{background:#315f88;color:#ffffff;padding:25px 0}
    .enquiry-grid/.contact-mini from the homepage's Quick Enquiry section for
    the column split, so only the section-specific colours are added here. */
 .enquire.enquire-split { background: var(--teal); }
+.facility-page {
+  --teal: #397777;
+  --teal-dark: #285c5c;
+  background: #eff8f8;
+}
+.facility-page .site-header,
+.facility-page .main-nav.open { background: #d6ecec; }
+.facility-page .about,
+.facility-page .intro { background: #eff8f8; }
+.facility-page .about.clubhouse-welcome,
+.facility-page .facilities { background: #d6ecec; }
+.facility-page .site-footer { background: #87bcbc; color: #203f3f; }
+.facility-page .site-footer .footer-link { color: #203f3f; }
+.facility-page .site-footer .footer-inner span { color: #2e5050; }
+.facility-page .eyebrow.dark { color: var(--teal-dark); }
+.facility-page .enquire.enquire-split { background: #acd9d9; }
+.facility-page .enquire-split .contact-mini a { color: var(--navy); }
 .enquire-split .eyebrow { color: var(--navy); }
 .enquire-split .enquiry-grid > div:first-child > p { color: var(--navy); }
 .enquire-split .contact-mini a { color: var(--white); }
@@ -530,3 +549,4 @@ footer{background:#315f88;color:#ffffff;padding:25px 0}
   height: auto;
   object-fit: contain;
 }  
+

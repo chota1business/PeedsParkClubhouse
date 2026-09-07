@@ -117,7 +117,7 @@ function setupLoginForm(form) {
       return;
     }
 
-    window.location.href = "dashboard.html";
+    window.location.href = staffRow.role === "pool_manager" ? "hourly-bookings.html?facility=pool" : "dashboard.html";
   });
 }
 
@@ -293,5 +293,13 @@ async function requireStaffSession() {
     return null;
   }
 
+  if (staffRow.role === "pool_manager") {
+    const page = window.location.pathname.split("/").pop();
+    const facility = new URLSearchParams(window.location.search).get("facility");
+    if (page !== "hourly-bookings.html" || facility !== "pool") {
+      window.location.replace("hourly-bookings.html?facility=pool");
+      return null;
+    }
+  }
   return { user: session.user, staff: staffRow };
 }

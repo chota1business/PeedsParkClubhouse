@@ -1,0 +1,144 @@
+body { --teal: #397777; --teal-dark: #285c5c; }
+/* Homepage aqua palette matching the facility pages. */
+body,
+.brand-banner-section,
+.gallery,
+.amenities,
+.enquire {
+  background: #eff8f8;
+}
+
+.about,
+.dark-section,
+.reviews {
+  background: #d6ecec;
+}
+
+.site-header,
+.main-nav.open,
+.site-footer {
+  background: #d6ecec;
+  color: #203f3f;
+}
+
+.site-footer { background: #87bcbc; }
+
+.site-footer .footer-inner span {
+  color: #2e5050;
+}
+
+.site-footer .footer-link {
+  color: #203f3f;
+}
+
+/* Aqua glass enquiry card, with a readable fallback without blur support. */
+.enquire {
+  padding: 72px 0;
+  background: radial-gradient(ellipse at 80% 35%, #87bcbc 0, transparent 55%), #acd9d9;
+}
+#enquiryForm {
+  background: rgba(239, 248, 248, .68);
+  border: 1px solid rgba(255, 255, 255, .85);
+  border-radius: 24px;
+  box-shadow: 0 18px 48px rgba(40, 92, 92, .14), inset 0 1px 0 rgba(255, 255, 255, .9);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+#enquiryForm input, #enquiryForm select, #enquiryForm textarea {
+  background: rgba(255, 255, 255, .65);
+  border-color: #acd9d9;
+  color: #203f3f;
+}
+#enquiryForm input:focus, #enquiryForm select:focus, #enquiryForm textarea:focus {
+  border-color: #397777;
+  box-shadow: 0 0 0 3px rgba(57, 119, 119, .15);
+}
+#enquiryForm .btn-primary { background: #397777; color: #fff; }
+#enquiryForm .btn-primary:hover { background: #285c5c; }
+
+/* Continuous six-frame cylindrical ticker. */
+#gallery { background: #eff8f8; }
+#gallery .gallery { padding-bottom: 20px; }
+#gallery .gallery-wrap {
+  position: relative;
+  height: 460px;
+  perspective: 1100px;
+  background: radial-gradient(ellipse at center, #acd9d9, #eff8f8 72%);
+}
+#gallery .cylinder { animation-duration: 36s; }
+#gallery .photo {
+  padding: 0;
+  border: 3px solid rgba(255, 255, 255, .8);
+  border-radius: 18px;
+  backface-visibility: hidden;
+  cursor: pointer;
+  box-shadow: 0 16px 32px rgba(40, 92, 92, .2);
+}
+#gallery .photo:focus-visible { outline: 4px solid #397777; outline-offset: 4px; }
+#gallery .hint { left: 0; right: 0; bottom: 12px; text-align: center; color: #285c5c; }
+#galleryPause { background: #d6ecec; color: #203f3f; margin-right: 10px; }
+#gallery .cylinder.is-paused,
+#gallery .gallery-wrap:focus-within .cylinder,
+body.lightbox-open #gallery .cylinder { animation-play-state: paused; }
+@media (max-width: 600px) {
+  #gallery .gallery-wrap { height: 350px; perspective: 850px; }
+  #gallery .cylinder { zoom: .65; }
+  #gallery .hint { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #gallery .gallery-wrap { height: auto; padding: 20px 16px; overflow: visible; }
+  #gallery .cylinder { display: flex; gap: 16px; width: 100%; height: auto; overflow-x: auto; animation: none; transform: none; zoom: 1; }
+  #gallery .photo { position: relative; inset: auto; flex: 0 0 210px; transform: none; }
+  #gallery .hint { position: static; }
+  #galleryPause { display: none; }
+}
+
+/* Banner and heading on the left; enquiry guidance and form on the right. */
+.enquiry-banner {
+  width: 100%;
+  height: auto;
+  margin-top: 24px;
+  border: 1px solid #87bcbc;
+  border-radius: 20px;
+  box-shadow: 0 12px 32px rgba(40, 92, 92, .14);
+}
+.enquiry-details { min-width: 0; }
+.enquiry-details > .muted { margin-top: 0; }
+.enquiry-details .contact-mini { margin-top: 14px; gap: 8px; font-size: 1rem; font-weight: 400; color: var(--muted); }
+.enquiry-details .contact-mini a { font: inherit; color: #000; }
+.enquiry-details .contact-mini p { margin: 0; }
+.enquiry-details #enquiryForm { width: 100%; }
+
+/* Shared rows keep the banner and form aligned and equally sized. */
+@media (min-width: 860px) {
+  #enquire .enquiry-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    align-items: stretch;
+    row-gap: 24px;
+  }
+  #enquire .enquiry-grid > div {
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: 1 / 4;
+    min-width: 0;
+  }
+  #enquire .enquiry-grid > div:first-child { grid-column: 1; }
+  #enquire .enquiry-details { grid-column: 2; }
+  #enquire .enquiry-banner {
+    grid-row: 2;
+    height: 100%;
+    min-height: 0;
+    object-fit: contain;
+    background: #acd9d9;
+    margin: 0;
+    border-radius: 24px;
+  }
+  #enquire #enquiryForm {
+    grid-row: 2;
+    margin: 0;
+    max-width: none;
+    height: 100%;
+  }
+  #enquire #enquiryConfirmation { grid-row: 3; }
+}

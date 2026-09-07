@@ -36,6 +36,21 @@ function createListControls(opts) {
     opts.onChange?.();
   }
 
+  if (dateFromInput || dateToInput) {
+    const clearDates = document.createElement("button");
+    clearDates.type = "button";
+    clearDates.className = "btn btn-outline-dark btn-sm";
+    clearDates.textContent = "Clear dates";
+    clearDates.addEventListener("click", () => {
+      if (dateFromInput) dateFromInput.value = "";
+      if (dateToInput) dateToInput.value = "";
+      state.dateFrom = "";
+      state.dateTo = "";
+      resetPageAndNotify();
+    });
+    (dateToInput || dateFromInput).closest("label").after(clearDates);
+  }
+
   searchInput?.addEventListener("input", () => {
     state.search = searchInput.value.trim().toLowerCase();
     resetPageAndNotify();
@@ -90,9 +105,9 @@ function createListControls(opts) {
       return;
     }
     pagerContainer.innerHTML = `
-      <button type="button" class="btn btn-outline-dark btn-sm" data-page-nav="prev" ${state.page <= 1 ? "disabled" : ""}>&larr; Prev</button>
+      ${state.page > 1 ? '<button type="button" class="btn btn-outline-dark btn-sm" data-page-nav="prev">&larr; Prev</button>' : ""}
       <span class="muted small" style="margin:0 10px;">Page ${state.page} of ${totalPages} &middot; ${totalItems} result${totalItems === 1 ? "" : "s"}</span>
-      <button type="button" class="btn btn-outline-dark btn-sm" data-page-nav="next" ${state.page >= totalPages ? "disabled" : ""}>Next &rarr;</button>
+      ${state.page < totalPages ? '<button type="button" class="btn btn-outline-dark btn-sm" data-page-nav="next">Next &rarr;</button>' : ""}
     `;
     pagerContainer.querySelector('[data-page-nav="prev"]')?.addEventListener("click", () => {
       state.page = Math.max(1, state.page - 1);

@@ -5,10 +5,18 @@
 // the lightbox just picks it up automatically.
 
 document.addEventListener("DOMContentLoaded", () => {
-  const grid = document.querySelector(".gallery-grid");
+  const grid = document.querySelector("#gallery .cylinder, .gallery-grid");
   if (!grid) return;
 
-  const figures = Array.from(grid.querySelectorAll("figure"));
+  const figures = Array.from(grid.querySelectorAll("figure, .photo"));
+  const pause = document.getElementById("galleryPause");
+  if (pause) {
+    pause.addEventListener("click", () => {
+      const paused = grid.classList.toggle("is-paused");
+      pause.setAttribute("aria-pressed", String(paused));
+      pause.textContent = paused ? "Resume gallery" : "Pause gallery";
+    });
+  }
   if (!figures.length) return;
 
   const photos = figures.map((fig) => {
@@ -50,19 +58,21 @@ document.addEventListener("DOMContentLoaded", () => {
     show(index);
     overlay.removeAttribute("hidden");
     document.body.classList.add("lightbox-open");
+    overlay.querySelector(".lightbox-close").focus();
   }
 
   function close() {
     overlay.setAttribute("hidden", "");
     document.body.classList.remove("lightbox-open");
     imgEl.src = ""; // stop loading/decoding once hidden
+    figures[currentIndex].focus();
   }
 
   figures.forEach((fig, index) => {
     fig.setAttribute("tabindex", "0");
     fig.setAttribute("role", "button");
     const caption = fig.querySelector("figcaption");
-    fig.setAttribute("aria-label", `View larger photo: ${caption ? caption.textContent : "gallery photo"}`);
+    fig.setAttribute("aria-label", `View larger photo: ${caption ? caption.textContent : fig.querySelector("img").alt}`);
     fig.addEventListener("click", () => open(index));
     fig.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {

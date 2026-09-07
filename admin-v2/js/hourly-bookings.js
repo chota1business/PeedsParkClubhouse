@@ -19,6 +19,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const session = await requireStaffSession();
   if (!session) return;
   staff = session.staff;
+  if (staff.role === "pool_manager") {
+    document.getElementById("facilityFilterRow").hidden = true;
+    document.querySelectorAll('select[name="facility_id"]').forEach((select) => {
+      Array.from(select.options).forEach((option) => { if (option.value !== "pool") option.remove(); });
+    });
+  }
 
   document.getElementById("staffName").textContent = staff.full_name;
   document.getElementById("staffRole").textContent = staff.role;
@@ -50,7 +56,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     dateToId: "hourlyDateTo",
     pagerContainerId: "hourlyPager",
     searchText: (b) => `${b.customer_name} ${b.phone}`,
-    dateField: (b) => b.booking_date,
+    dateField: (b) => b._kind === "enquiry" ? b.preferred_date : b.booking_date,
     onChange: renderBookings,
   });
 
@@ -70,6 +76,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   wireEditBookingModal();
   wireEnquiryModal();
+  AdminActions.init({ staff, facilityIds: () => staff.role === "pool_manager" || activeFacility === "pool" ? ["pool"] : activeFacility === "badminton" ? ["badminton_1", "badminton_2"] : HOURLY_FACILITY_IDS,
+    onSaved: () => Promise.all([loadBookings(), loadEnquiries()]) });
   await Promise.all([loadBookings(), loadEnquiries()]);
 });
 
@@ -106,7 +114,7 @@ async function loadEnquiries() {
   const { data, error } = await supabaseClient
     .from("enquiries")
     .select("*")
-    .in("facility_id", HOURLY_FACILITY_IDS)
+    .in("facility_id", staff.role === "pool_manager" ? ["pool"] : HOURLY_FACILITY_IDS)
     .order("preferred_date", { ascending: true });
 
   if (error) return; // non-fatal — bookings list still works on its own
@@ -150,7 +158,7 @@ function enquiryRowHtml(e) {
     <div class="enquiry-card" style="border-left-color:#7C6FBB;">
       <div class="enquiry-card-main">
         <div>
-          <span class="row-kind-tag kind-enquiry">Enquiry</span>
+          <span class="row-kind-tag kind-enquiry">Enquiry only</span>
           <strong>${escapeHtml(e.customer_name)}</strong>
           <span class="muted"> · ${escapeHtml(e.phone)}</span>
         </div>
@@ -187,7 +195,7 @@ function bookingRowHtml(b) {
     <div class="enquiry-card" style="border-left-color:${color};">
       <div class="enquiry-card-main">
         <div>
-          <span class="row-kind-tag kind-booking">Booking</span>
+          <span class="row-kind-tag kind-booking">Booking enquiry</span>
           <strong>${escapeHtml(b.customer_name)}</strong>
           <span class="muted"> · ${escapeHtml(b.phone)}</span>
         </div>
@@ -428,6 +436,7 @@ function openEnquiryModal(enquiry) {
   form.elements["guests"].value = enquiry.guests || "";
   form.elements["status"].value = enquiry.status;
   form.elements["message"].value = enquiry.message || "";
+  AdminActions.prepareEnquiry(enquiry);
 
   modal.hidden = false;
 }

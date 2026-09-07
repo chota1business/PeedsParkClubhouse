@@ -41,6 +41,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   wireEditBookingModal();
   wireEnquiryModal();
+  AdminActions.init({ staff, facilityIds: () => HALL_LAWN_IDS,
+    onSaved: () => Promise.all([loadBookings(), loadEnquiries()]) });
   await Promise.all([loadBookings(), loadEnquiries()]);
 });
 
@@ -103,7 +105,7 @@ function enquiryRowHtml(e) {
     <div class="enquiry-card" style="border-left-color:#7C6FBB;">
       <div class="enquiry-card-main">
         <div>
-          <span class="row-kind-tag kind-enquiry">Enquiry</span>
+          <span class="row-kind-tag kind-enquiry">Enquiry only</span>
           <strong>${escapeHtml(e.customer_name)}</strong>
           <span class="muted"> · ${escapeHtml(e.phone)}</span>
         </div>
@@ -144,7 +146,7 @@ function bookingRowHtml(b) {
     <div class="enquiry-card" style="border-left-color:${color};">
       <div class="enquiry-card-main">
         <div>
-          <span class="row-kind-tag kind-booking">Booking</span>
+          <span class="row-kind-tag kind-booking">Booking enquiry</span>
           <strong>${escapeHtml(b.customer_name)}</strong>
           <span class="muted"> · ${escapeHtml(b.phone)}</span>
         </div>
@@ -368,6 +370,7 @@ function openEnquiryModal(enquiry) {
   form.elements["guests"].value = enquiry.guests || "";
   form.elements["status"].value = enquiry.status;
   form.elements["message"].value = enquiry.message || "";
+  AdminActions.prepareEnquiry(enquiry);
 
   modal.hidden = false;
 }
