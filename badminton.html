@@ -13,7 +13,7 @@
 <header class="site-header">
   <div class="container header-inner">
     <a class="brand" href="index.html">
-      <img src="images/peedspark-logo.jpg" alt="Peeds Park Club House logo">
+      <img data-content-image="logo" src="images/peedspark-logo.jpg" alt="Peeds Park Club House logo">
       <div><strong>Peeds Park</strong><span>Club House</span></div>
     </a>
     <nav class="main-nav" id="mainNav">
@@ -29,12 +29,12 @@
   </div>
 </header>
 
-<section class="hero hero-photo" style="background-image:url('images/badminton2.jpeg');">
+<section data-content-image="badminton_hero" class="hero hero-photo" style="background-image:url('images/badminton2.jpeg');">
   <div class="container hero-inner">
     <h1>Badminton Court</h1>
      <div class="hero-actions">
       <a href="#availability" class="btn btn-primary btn-lg btn-gold-gloss">Select a date</a>
-      <a href="tel:+919846718106" class="btn btn-outline btn-lg btn-gold-gloss">📞 Call Us</a>
+      <a data-contact-phone="0" href="tel:+919846718106" class="btn btn-outline btn-lg btn-gold-gloss">📞 Call Us</a>
     </div>
   </div>
 </section>
@@ -56,8 +56,8 @@
         <h2>Check a date, then request to book.</h2>
         <p>Choose a court and date to see open hours, then request to book directly — no separate enquiry needed.</p>
         <div class="contact-mini">
-          <a href="tel:+919846718106">📞 98467 18106</a>
-          <a href="tel:+919946440088">📞 99464 40088</a>
+          <a data-contact-phone="0" data-contact-label="number" href="tel:+919846718106">📞 98467 18106</a>
+          <a data-contact-phone="1" data-contact-label="number" href="tel:+919946440088">📞 99464 40088</a>
         </div>
       </div>
       <div class="form-card">
@@ -132,8 +132,8 @@
     <div class="container footer-inner">
       <div><strong>Peeds Park Club House</strong><br><span>Ammancherry • Kerala 686561</span>
       <p class="contact-emails">
-        ✉️ <a href="mailto:peedspark@gmail.com">peedspark@gmail.com</a><br>
-        ✉️ <a href="mailto:lsparkclubhouse@gmail.com">lsparkclubhouse@gmail.com</a>
+        ✉️ <a data-contact-email="0" href="mailto:peedspark@gmail.com">peedspark@gmail.com</a><br>
+        ✉️ <a data-contact-email="1" href="mailto:lsparkclubhouse@gmail.com">lsparkclubhouse@gmail.com</a>
       </p>
       </div>
       <div>Sports • Celebrations • Memories</div>
@@ -143,8 +143,10 @@
 
 <a href="https://wa.me/919846718106" class="whatsapp-float" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">💬</a>
 
+<script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/supabase-client.js?v=20260903"></script>
+<script src="js/site-content.js?v=20260908"></script>
 <script src="js/nav.js?v=20260907-contact"></script>
 <script>
   window.FACILITY_PAGE_CONFIG = {
@@ -157,6 +159,6 @@
     showModeAndGuests: false,
   };
 </script>
-<script src="js/facility-page.js?v=20260908-copy"></script>
+<script src="js/facility-page.js?v=20260908-content"></script>
 </body>
 </html>

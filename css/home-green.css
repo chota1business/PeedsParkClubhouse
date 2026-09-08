@@ -88,7 +88,7 @@ body.lightbox-open #gallery .cylinder { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
   #gallery .gallery-wrap { height: auto; padding: 20px 16px; overflow: visible; }
   #gallery .cylinder { display: flex; gap: 16px; width: 100%; height: auto; overflow-x: auto; animation: none; transform: none; zoom: 1; }
-  #gallery .photo { position: relative; inset: auto; flex: 0 0 210px; transform: none; }
+  #gallery .photo { position: relative; inset: auto; flex: 0 0 210px; transform: none !important; }
   #gallery .hint { position: static; }
   #galleryPause { display: none; }
 }

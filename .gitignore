@@ -1,0 +1,4 @@
+# Local runtime config — real values are injected at deploy time by
+# .github/workflows/inject-secrets.yml (from GitHub repository secrets),
+# never committed. See config.js's own comments for local dev setup.
+config.js

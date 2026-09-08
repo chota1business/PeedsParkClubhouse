@@ -4,7 +4,8 @@
 // #gallery .gallery-grid — nothing else needs to change to add a photo,
 // the lightbox just picks it up automatically.
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  await window.SiteContent?.ready;
   const grid = document.querySelector("#gallery .cylinder, .gallery-grid");
   if (!grid) return;
 

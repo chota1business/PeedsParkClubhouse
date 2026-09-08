@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Website Settings — Peeds Park Admin</title>
+<link rel="stylesheet" href="../css/style.css?v=20260904-6">
+<link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/manager-feed.css?v=20260907-admin2">
+<link rel="stylesheet" href="css/website-settings.css?v=20260908">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="container admin-header-inner">
+    <a href="dashboard.html" class="brand">
+      <img src="../images/peedspark-logo.jpg" alt="PeedsPark Club House logo">
+      <div><strong>Peeds Park</strong><span>Admin</span></div>
+    </a>
+    <div class="admin-user">
+      <span id="staffName">Loading…</span>
+      <span id="staffRole" class="role-badge"></span>
+      <button id="logoutBtn" class="btn btn-outline-dark">Log Out</button>
+    </div>
+  </div>
+</header>
+
+<main class="container admin-main">
+<div id="notAuthorised" hidden><h2>Not authorised</h2><p>Website Settings is available to Admins only.</p><a href="dashboard.html">Back</a></div>
+<div id="pageContent" hidden><div class="page-head"><a href="dashboard.html" class="back-link">← Dashboard</a><h2>Website Settings</h2></div>
+<p>Manage public contact details and photos. Upload only images you want to make public. JPG, PNG or WebP, up to 5 MB; large images are optimised automatically.</p>
+<p id="settingsNote" role="status">Loading settings…</p>
+<form id="settingsForm"><fieldset id="settingsEditor" disabled><h3>Contact details</h3><div class="settings-grid">
+<label>Phone 1<input name="phone1" type="tel" required placeholder="+919846718106"></label><label>Phone 2<input name="phone2" type="tel" required></label>
+<label>Email 1<input name="email1" type="email" required></label><label>Email 2<input name="email2" type="email" required></label>
+<label>WhatsApp number (with country code)<input name="whatsapp" type="tel" required></label></div>
+<h3>Website photos and banners</h3><p>Hero photos fill their frames and may be cropped. Banners keep their original proportions. Contact text embedded inside an uploaded image must be replaced as part of that image.</p><div id="settingsImages" class="settings-grid"></div>
+<h3>Gallery</h3><p>Arrange up to 12 photos in the order visitors should see them.</p><div id="settingsGallery" class="settings-grid"></div>
+<label>Add gallery photo<input id="addGalleryPhoto" type="file" accept="image/jpeg,image/png,image/webp"></label>
+<p><button class="btn btn-primary" type="submit">Preview changes</button></p></fieldset></form>
+<section id="settingsPreview" hidden><h3>Review before publishing</h3><p>These are the contact details and images that will replace the current website content.</p><div id="previewContent"></div><div class="settings-actions"><button type="button" id="publishSettings" class="btn btn-primary">Publish changes</button><button type="button" id="cancelPreview" class="btn btn-outline-dark">Back to editing</button></div></section>
+<h3>Recent publishing history</h3><ul id="settingsHistory"></ul></div></main>
+<footer class="site-footer" id="contact">
+  <div class="container footer-inner">
+    <div><strong>PeedsPark Club House</strong><br><span>Ammancherry &bull; Kerala 686561</span></div>
+    <div>Sports &bull; Celebrations &bull; Memories</div>
+    <div><a href="../privacy-policy.html" class="footer-link">Privacy &amp; Booking Policy</a></div>
+  </div>
+</footer>
+
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../js/supabase-client.js?v=20260904"></script>
+<script src="js/admin-auth.js?v=20260907-admin2"></script>
+<script src="../js/site-content.js?v=20260908"></script>
+<script src="js/website-settings.js?v=20260908"></script>
+</body>
+</html>
