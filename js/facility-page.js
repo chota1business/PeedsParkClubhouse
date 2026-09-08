@@ -520,7 +520,7 @@ function showBookingConfirmation(code, details) {
     (details.slot ? `Slot: ${details.slot}\n` : "") +
     (details.start_time ? `Time: ${details.start_time}–${details.end_time}\n` : "")
   );
-  const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${waMessage}`;
+  const waLink = `https://wa.me/${window.SiteContent?.current.whatsapp || WHATSAPP_NUMBER}?text=${waMessage}`;
 
   panel.innerHTML = `
     <div style="text-align:center;">

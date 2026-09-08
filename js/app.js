@@ -204,7 +204,7 @@ function showEnquiryConfirmation(row, payload) {
     (payload.preferred_date ? `Preferred date: ${payload.preferred_date}\n` : "") +
     (payload.message ? `Message: ${payload.message}` : "")
   );
-  const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${waMessage}`;
+  const waLink = `https://wa.me/${window.SiteContent?.current.whatsapp || WHATSAPP_NUMBER}?text=${waMessage}`;
 
   panel.innerHTML = confirmationPanelHtml({
     heading: "Enquiry received!",
