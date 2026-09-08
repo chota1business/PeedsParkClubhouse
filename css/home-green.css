@@ -103,6 +103,18 @@ body.lightbox-open #gallery .cylinder { animation-play-state: paused; }
   box-shadow: 0 12px 32px rgba(40, 92, 92, .14);
 }
 .enquiry-details { min-width: 0; }
+.enquiry-banner-compact { display: none; }
+@media (max-width: 600px) {
+  #enquire .enquiry-banner { display: none; }
+  .enquiry-banner-compact {
+    display: flex; align-items: center; gap: 14px; margin-top: 20px;
+    padding: 16px; background: #d6ecec; color: #203f3f;
+    border: 1px solid #87bcbc; border-radius: 16px;
+  }
+  .enquiry-banner-compact img { width: 56px; height: 56px; object-fit: contain; border-radius: 50%; flex-shrink: 0; }
+  .enquiry-banner-compact strong { display: block; margin-bottom: 4px; }
+  .enquiry-banner-compact p { margin: 0; font-size: .9rem; line-height: 1.5; }
+}
 .enquiry-details > .muted { margin-top: 0; }
 .enquiry-details .contact-mini { margin-top: 14px; gap: 8px; font-size: 1rem; font-weight: 400; color: var(--muted); }
 .enquiry-details .contact-mini a { font: inherit; color: #000; }

@@ -514,6 +514,11 @@ footer{background:#315f88;color:#ffffff;padding:25px 0}
 .dark-section { background: var(--white); } /* "Perfect for" section on index.html — user request */
 
 .intro-grid{display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:center}
+@media (max-width: 759px) {
+  .intro-grid { grid-template-columns: 1fr; gap: 20px; }
+  .intro { padding: 40px 0; }
+  .intro-grid p { margin-bottom: 0; }
+}
 .uses{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .uses div{border:1px solid rgba(79,131,182,.25);padding:18px;border-radius:8px;text-align:center;font-weight:600;color:var(--navy)}
 

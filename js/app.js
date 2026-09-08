@@ -1,4 +1,4 @@
-// PeedsPark — homepage (index.html) behaviour: Quick Enquiry form only.
+// Peeds Park — homepage (index.html) behaviour: Quick Enquiry form only.
 // Nav toggle/active-tab logic lives in js/nav.js (shared across all pages).
 // The check-availability-and-book flow lives in js/facility-page.js, used
 // by the dedicated facility pages (pool.html, badminton.html, ac-hall.html,
@@ -198,7 +198,7 @@ function showEnquiryConfirmation(row, payload) {
   const form = document.getElementById("enquiryForm");
   const panel = document.getElementById("enquiryConfirmation");
   const waMessage = encodeURIComponent(
-    `Hi PeedsPark! I just sent an enquiry (${row.enquiry_code}).\n` +
+    `Hi Peeds Park! I just sent an enquiry (${row.enquiry_code}).\n` +
     `Name: ${payload.customer_name}\n` +
     (payload.facility_id ? `Facility: ${payload.facility_id}\n` : "") +
     (payload.preferred_date ? `Preferred date: ${payload.preferred_date}\n` : "") +
@@ -209,7 +209,7 @@ function showEnquiryConfirmation(row, payload) {
   panel.innerHTML = confirmationPanelHtml({
     heading: "Enquiry received!",
     reference: row.enquiry_code,
-    message: `Your enquiry for ${payload.facility_id || "PeedsPark"} is sent for confirmation.`,
+    message: `Your enquiry for ${payload.facility_id || "Peeds Park"} is sent for confirmation.`,
     waLink,
     anotherText: "Send another enquiry",
   });

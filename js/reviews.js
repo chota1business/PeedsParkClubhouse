@@ -1,4 +1,4 @@
-// PeedsPark — homepage Reviews section: renders approved reviews and
+// Peeds Park — homepage Reviews section: renders approved reviews and
 // handles the "Write a Review" submission form.
 //
 // Wrapped in an IIFE deliberately: js/app.js (loaded just before this file
@@ -65,7 +65,7 @@
   function reviewCardHtml(r) {
     const rating = Math.max(0, Math.min(5, Number(r.rating) || 0));
     const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
-    const facilityLabel = FACILITY_LABELS[r.facility_group] || "PeedsPark visit";
+    const facilityLabel = FACILITY_LABELS[r.facility_group] || "Peeds Park visit";
     // First name only on the public card — a small privacy default (full
     // name is still visible to staff in the admin moderation queue).
     const firstName = (r.customer_name || "").trim().split(/\s+/)[0] || "Guest";

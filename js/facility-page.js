@@ -1,4 +1,4 @@
-// PeedsPark — shared "check availability & book" flow for facility pages
+// Peeds Park — shared "check availability & book" flow for facility pages
 // (pool.html, badminton.html, ac-hall.html, non-ac-hall.html, lawn.html).
 // Each page sets window.FACILITY_PAGE_CONFIG before this script loads, e.g.:
 //
@@ -514,7 +514,7 @@ function showBookingConfirmation(code, details) {
   if (!panel) return;
 
   const waMessage = encodeURIComponent(
-    `Hi PeedsPark! I just requested a booking (${code}).\n` +
+    `Hi Peeds Park! I just requested a booking (${code}).\n` +
     `Facility: ${details.facility}\n` +
     (details.date ? `Date: ${details.date}\n` : "") +
     (details.slot ? `Slot: ${details.slot}\n` : "") +
