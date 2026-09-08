@@ -20,6 +20,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!session) return;
   staff = session.staff;
   if (staff.role === "pool_manager") {
+    document.querySelectorAll('a[href="dashboard.html"]').forEach(link => {
+      if (link.classList.contains("brand")) link.href = "hourly-bookings.html?facility=pool";
+      else link.remove();
+    });
     document.getElementById("facilityFilterRow").hidden = true;
     document.querySelectorAll('select[name="facility_id"]').forEach((select) => {
       Array.from(select.options).forEach((option) => { if (option.value !== "pool") option.remove(); });
@@ -29,6 +33,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("staffName").textContent = staff.full_name;
   document.getElementById("staffRole").textContent = staff.role === "pool_manager" ? "Pool Manager" : staff.role;
   document.getElementById("pageContent").hidden = false;
+  document.querySelectorAll("[data-facility-view]").forEach(button => {
+    button.addEventListener("click", () => showFacilityView(button.dataset.facilityView));
+  });
 
   document.querySelectorAll("[data-facility]").forEach(chip => {
     chip.addEventListener("click", () => {
@@ -37,6 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       activeFacility = chip.dataset.facility;
       listControls?.resetPage();
       renderBookings();
+      loadFacilityExpenses();
     });
   });
 
@@ -77,9 +85,54 @@ document.addEventListener("DOMContentLoaded", async () => {
   wireEditBookingModal();
   wireEnquiryModal();
   AdminActions.init({ staff, facilityIds: () => staff.role === "pool_manager" || activeFacility === "pool" ? ["pool"] : activeFacility === "badminton" ? ["badminton_1", "badminton_2"] : HOURLY_FACILITY_IDS,
-    onSaved: () => Promise.all([loadBookings(), loadEnquiries()]) });
+    onSaved: () => Promise.all([loadBookings(), loadEnquiries()]), onExpenseSaved: () => { showFacilityView("expenses"); return loadFacilityExpenses(); } });
+  if (staff.role === "pool_manager") document.getElementById("facilityExpensesHeading").textContent = "My Pool expenses";
+  facilityExpenseControls = createListControls({ searchInputId: "facilityExpenseSearch", pagerContainerId: "facilityExpensePager", searchText: x => `${x.description} ${x.category} ${x.paid_by || ''}`, onChange: renderFacilityExpenses });
+  await loadFacilityExpenses();
   await Promise.all([loadBookings(), loadEnquiries()]);
 });
+
+function showFacilityView(view) {
+  document.getElementById("facilityBookingsPanel").hidden = view !== "bookings";
+  document.getElementById("facilityExpensesPanel").hidden = view !== "expenses";
+  document.querySelectorAll("[data-facility-view]").forEach(button => {
+    const active = button.dataset.facilityView === view;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+}
+
+let facilityExpenseRows = [], facilityExpenseControls, expenseLoadId = 0;
+async function loadFacilityExpenses() {
+  if (!facilityExpenseControls) return;
+  const request = ++expenseLoadId;
+  const note = document.getElementById("facilityExpenseNote");
+  facilityExpenseRows = []; renderFacilityExpenses(); note.textContent = "Loading expenses…";
+  const ids = staff.role === "pool_manager" || activeFacility === "pool" ? ["pool"] : activeFacility === "badminton" ? ["badminton_1","badminton_2"] : HOURLY_FACILITY_IDS;
+  try {
+    const rows = [];
+    for (let offset = 0; ; offset += 500) {
+      let query = supabaseClient.from("expenses").select("*").in("facility_id", ids);
+      if (staff.role === "pool_manager") query = query.eq("created_by", staff.id);
+      const { data, error } = await query.order("expense_date", { ascending: false }).order("id").range(offset, offset + 499);
+      if (request !== expenseLoadId) return;
+      if (error) throw error;
+      rows.push(...(data || []));
+      if (!data || data.length < 500) break;
+    }
+    facilityExpenseRows = rows; facilityExpenseControls.resetPage(); renderFacilityExpenses();
+    note.textContent = rows.length ? "" : "No expenses added yet.";
+  } catch (error) { if (request === expenseLoadId) note.textContent = "Couldn't load expenses: " + error.message; }
+}
+function renderFacilityExpenses() {
+  const rows = facilityExpenseControls.apply(facilityExpenseRows);
+  const page = facilityExpenseControls.paginate(rows);
+  document.getElementById("facilityExpenseSummary").innerHTML = AdminActions.expenseSummaryHtml(rows, "All time");
+  const list = document.getElementById("facilityExpenseList");
+  list.innerHTML = page.rows.map(AdminActions.expenseCardHtml).join("");
+  list.querySelectorAll("[data-edit-expense]").forEach(button => button.addEventListener("click", () => AdminActions.editExpense(rows.find(x => String(x.id) === button.dataset.editExpense))));
+  facilityExpenseControls.renderPager(rows.length);
+}
 
 // Item 8 — Pool/Badminton pages show a heading matching the facility they
 // were opened for, instead of always the combined "Pool & Badminton" title.

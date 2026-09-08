@@ -19,9 +19,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("staffRole").textContent = staff.role;
   document.getElementById("pageContent").hidden = false;
 
-  document.querySelectorAll(".filter-chip").forEach(chip => {
+  document.querySelectorAll("[data-status]").forEach(chip => {
     chip.addEventListener("click", () => {
-      document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+      document.querySelectorAll("[data-status]").forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
       activeFilter = chip.dataset.status;
       listControls?.resetPage();
@@ -39,12 +39,57 @@ document.addEventListener("DOMContentLoaded", async () => {
     onChange: renderBookings,
   });
 
+  document.querySelectorAll("[data-facility-view]").forEach(button => button.addEventListener("click", () => showFacilityView(button.dataset.facilityView)));
   wireEditBookingModal();
   wireEnquiryModal();
   AdminActions.init({ staff, facilityIds: () => HALL_LAWN_IDS,
-    onSaved: () => Promise.all([loadBookings(), loadEnquiries()]) });
+    onSaved: () => Promise.all([loadBookings(), loadEnquiries()]), onExpenseSaved: () => { showFacilityView("expenses"); return loadFacilityExpenses(); } });
+  facilityExpenseControls = createListControls({ searchInputId: "facilityExpenseSearch", pagerContainerId: "facilityExpensePager", searchText: x => `${x.description} ${x.category} ${x.paid_by || ""}`, onChange: renderFacilityExpenses });
+  await loadFacilityExpenses();
   await Promise.all([loadBookings(), loadEnquiries()]);
 });
+
+function showFacilityView(view) {
+  document.getElementById("facilityBookingsPanel").hidden = view !== "bookings";
+  document.getElementById("facilityExpensesPanel").hidden = view !== "expenses";
+  document.querySelectorAll("[data-facility-view]").forEach(button => {
+    const active = button.dataset.facilityView === view;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+}
+
+let facilityExpenseRows = [], facilityExpenseControls, expenseLoadId = 0;
+async function loadFacilityExpenses() {
+  if (!facilityExpenseControls) return;
+  const request = ++expenseLoadId;
+  const note = document.getElementById("facilityExpenseNote");
+  facilityExpenseRows = []; renderFacilityExpenses(); note.textContent = "Loading expenses…";
+  const ids = HALL_LAWN_IDS;
+  try {
+    const rows = [];
+    for (let offset = 0; ; offset += 500) {
+      let query = supabaseClient.from("expenses").select("*").in("facility_id", ids);
+
+      const { data, error } = await query.order("expense_date", { ascending: false }).order("id").range(offset, offset + 499);
+      if (request !== expenseLoadId) return;
+      if (error) throw error;
+      rows.push(...(data || []));
+      if (!data || data.length < 500) break;
+    }
+    facilityExpenseRows = rows; facilityExpenseControls.resetPage(); renderFacilityExpenses();
+    note.textContent = rows.length ? "" : "No expenses added yet.";
+  } catch (error) { if (request === expenseLoadId) note.textContent = "Couldn't load expenses: " + error.message; }
+}
+function renderFacilityExpenses() {
+  const rows = facilityExpenseControls.apply(facilityExpenseRows);
+  const page = facilityExpenseControls.paginate(rows);
+  document.getElementById("facilityExpenseSummary").innerHTML = AdminActions.expenseSummaryHtml(rows, "All time");
+  const list = document.getElementById("facilityExpenseList");
+  list.innerHTML = page.rows.map(AdminActions.expenseCardHtml).join("");
+  list.querySelectorAll("[data-edit-expense]").forEach(button => button.addEventListener("click", () => AdminActions.editExpense(rows.find(x => String(x.id) === button.dataset.editExpense))));
+  facilityExpenseControls.renderPager(rows.length);
+}
 
 async function loadBookings() {
   const { data, error } = await supabaseClient

@@ -47,8 +47,8 @@ begin
   begin perform public.staff_save_booking_enquiry(v_payload); exception when others then v_denied := true; end;
   if not v_denied then raise exception 'Duplicate conversion allowed'; end if;
   v_denied := false;
-  begin insert into public.expenses(expense_date,category,amount,description,facility_id,created_by) values(current_date,'other',1,'Forbidden','pool',auth.uid()); exception when insufficient_privilege then v_denied:=true; end;
-  if not v_denied then raise exception 'Pool manager allowed expenses'; end if;
+  begin insert into public.expenses(expense_date,category,amount,description,facility_id,created_by) values(current_date,'other',1,'Forbidden','ac_hall',auth.uid()); exception when insufficient_privilege then v_denied:=true; end;
+  if not v_denied then raise exception 'Pool manager allowed other facility expenses'; end if;
 end;
 $$;
 reset role;

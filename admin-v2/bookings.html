@@ -38,6 +38,11 @@
     </div>
 
     <div class="filter-row"><button type="button" class="btn btn-primary btn-sm" id="openAddBookingBtn">+ Add Booking enquiry</button><button type="button" class="btn btn-outline-dark btn-sm" id="openAddExpenseBtn">+ Add Expense</button></div>
+    <div class="filter-row" aria-label="Facility views">
+      <button type="button" class="filter-chip active" data-facility-view="bookings" aria-pressed="true" aria-controls="facilityBookingsPanel">Bookings &amp; enquiries</button>
+      <button type="button" class="filter-chip" data-facility-view="expenses" aria-pressed="false" aria-controls="facilityExpensesPanel">Expenses</button>
+    </div>
+    <div id="facilityBookingsPanel">
     <div class="filter-row">
       <button class="filter-chip active" data-status="all">All</button>
       <button class="filter-chip" data-status="pending">Pending</button>
@@ -61,6 +66,15 @@
       <p class="muted center" style="padding:40px;">Loading bookings…</p>
     </div>
     <div id="bookingPager" class="pager-row" style="margin-top:12px; text-align:center;"></div>
+    </div>
+    <section id="facilityExpensesPanel" aria-labelledby="facilityExpensesHeading" hidden>
+      <h3 id="facilityExpensesHeading">Expenses</h3>
+      <div class="list-controls-row"><label>Search expenses<input type="search" id="facilityExpenseSearch"></label></div>
+      <p id="facilityExpenseNote" role="status"></p>
+      <div id="facilityExpenseSummary" class="expense-summary"></div>
+      <div id="facilityExpenseList" class="enquiry-list"></div>
+      <div id="facilityExpensePager" class="pager-row"></div>
+    </section>
   </div>
 
   <!-- Edit Booking modal — the one place to change status (approve/reject/
@@ -222,8 +236,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../js/supabase-client.js?v=20260904"></script>
 <script src="js/admin-auth.js?v=20260907-admin2"></script>
-<script src="js/admin-actions.js?v=20260907-admin2"></script>
+<script src="js/admin-actions.js?v=20260908-expenses"></script>
 <script src="js/list-controls.js?v=20260907-admin2"></script>
-<script src="js/bookings.js?v=20260907-admin2"></script>
+<script src="js/bookings.js?v=20260908-tabs"></script>
 </body>
 </html>

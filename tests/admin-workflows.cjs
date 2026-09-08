@@ -21,7 +21,7 @@ function mockSupabase({ role }) {
   function query(table) {
     (window.readTables ||= []).push(table);
     let rows = tables[table] || [], single = false;
-    if (table === 'expenses') rows = Array.from({ length: 31 }, (_, i) => ({ id: i, expense_date: new Date().toISOString().slice(0, 10), amount: 100, facility_id: 'pool', category: 'maintenance', description: i === 0 ? '<img src=x onerror=alert(1)>' : 'Pool supplies', paid_by: 'Manager' }));
+    if (table === 'expenses') rows = Array.from({ length: 31 }, (_, i) => ({ id: i, created_by: staff.id, expense_date: new Date().toISOString().slice(0, 10), amount: 100, facility_id: 'pool', category: 'maintenance', description: i === 0 ? '<img src=x onerror=alert(1)>' : 'Pool supplies', paid_by: 'Manager' }));
     const q = { select() { return q; }, order() { return q; },
       gte(k, v) { rows = rows.filter(x => x[k] >= v); return q; }, lte(k, v) { rows = rows.filter(x => x[k] <= v); return q; }, range(a, b) { rows = rows.slice(a, b + 1); return q; },
       eq(k, v) { rows = rows.filter(x => x[k] === v); return q; }, in(k, v) { rows = rows.filter(x => v.includes(x[k])); return q; },
@@ -51,9 +51,14 @@ function mockSupabase({ role }) {
     const analytics = await pageFor('analytics.html');
     assert.ok(!await analytics.evaluate(() => (window.readTables || []).includes('expenses')));
     await analytics.getByRole('button', { name: 'Expenses', exact: true }).click();
-    await analytics.locator('#expensesTotal').filter({ hasText: '31 expenses' }).waitFor();
+    await analytics.locator('#expensesTotal').filter({ hasText: '31' }).waitFor();
     assert.match(await analytics.locator('#expensesTotal').innerText(), /3100.00/);
     assert.equal(await analytics.locator('#expensesList img').count(), 0);
+    await analytics.locator('#expensesList [data-edit-expense]').first().click();
+    await analytics.locator('#sharedAddExpense [name="amount"]').fill('150');
+    await analytics.locator('#sharedAddExpense form').getByRole('button', { name: 'Save', exact: true }).click();
+    await analytics.locator('#sharedAddExpense').waitFor({ state: 'hidden' });
+    assert.ok(await analytics.evaluate(() => savedRequests.some(x => x.table === 'expenses' && x.data.amount === 150)));
     assert.equal(await analytics.locator('#overviewPanel').isVisible(), false);
     assert.equal(await analytics.locator('[data-page-nav="prev"]').count(), 0);
     await analytics.locator('[data-page-nav="next"]').click();
@@ -73,7 +78,7 @@ function mockSupabase({ role }) {
     await analytics.getByText("Couldn't load expenses: Test failure", { exact: true }).waitFor();
     await analytics.evaluate(() => { window.failExpenses = false; });
     await analytics.getByRole('button', { name: 'Last 7 days', exact: true }).click();
-    await analytics.locator('#expensesTotal').filter({ hasText: '31 expenses' }).waitFor();
+    await analytics.locator('#expensesTotal').filter({ hasText: '31' }).waitFor();
     await analytics.setViewportSize({ width: 390, height: 844 });
     assert.ok(await analytics.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await analytics.close();
@@ -94,19 +99,19 @@ function mockSupabase({ role }) {
       await dashboard.close();
     }
     const page = await pageFor('hourly-bookings.html?facility=pool');
-    await page.locator('[data-page-nav="next"]').waitFor();
-    assert.equal(await page.locator('[data-page-nav="prev"]').count(), 0);
-    await page.locator('[data-page-nav="next"]').click();
-    await page.locator('[data-page-nav="next"]').click();
-    assert.equal(await page.locator('[data-page-nav="next"]').count(), 0);
-    assert.equal(await page.locator('[data-page-nav="prev"]').count(), 1);
+    await page.locator('#hourlyPager [data-page-nav="next"]').waitFor();
+    assert.equal(await page.locator('#hourlyPager [data-page-nav="prev"]').count(), 0);
+    await page.locator('#hourlyPager [data-page-nav="next"]').click();
+    await page.locator('#hourlyPager [data-page-nav="next"]').click();
+    assert.equal(await page.locator('#hourlyPager [data-page-nav="next"]').count(), 0);
+    assert.equal(await page.locator('#hourlyPager [data-page-nav="prev"]').count(), 1);
     await page.locator('#hourlyDateFrom').fill('2100-01-01');
     await page.locator('#hourlyDateFrom').dispatchEvent('change');
     assert.equal(await page.locator('#bookingList .enquiry-card').count(), 0);
     await page.getByRole('button', { name: 'Clear dates' }).click();
     assert.equal(await page.locator('#hourlyDateFrom').inputValue(), '');
     assert.equal(await page.locator('#bookingList .enquiry-card').count(), 15);
-    assert.equal(await page.locator('[data-page-nav="prev"]').count(), 0);
+    assert.equal(await page.locator('#hourlyPager [data-page-nav="prev"]').count(), 0);
     await page.locator('#openAddBookingBtn').click();
     let form = page.locator('#sharedAddBooking form');
     assert.deepEqual(await form.locator('[name="facility_id"] option').evaluateAll(els => els.map(e => e.value)), ['pool']);
@@ -134,7 +139,18 @@ function mockSupabase({ role }) {
     }
     const pool = await pageFor('hourly-bookings.html?facility=pool', 'pool_manager');
     assert.equal(await pool.locator('#facilityFilterRow').isVisible(), false);
-    assert.equal(await pool.locator('#openAddExpenseBtn').isVisible(), false);
+    assert.equal(await pool.locator('#openAddExpenseBtn').isVisible(), true);
+    assert.equal(await pool.locator('a[href="dashboard.html"]').count(), 0);
+    assert.equal(await pool.locator('#facilityExpensesPanel').isVisible(), false);
+    await pool.locator('[data-facility-view="expenses"]').click();
+    assert.equal(await pool.locator('#facilityBookingsPanel').isVisible(), false);
+    await pool.locator('#facilityExpensesHeading').filter({ hasText: 'My Pool expenses' }).waitFor();
+    await pool.locator('#facilityExpenseList [data-edit-expense]').first().click();
+    const expenseEdit = pool.locator('#sharedAddExpense form');
+    await expenseEdit.locator('[name=description]').fill('Updated pool expense');
+    await expenseEdit.getByRole('button', { name: 'Save', exact: true }).click();
+    await pool.locator('#sharedAddExpense').waitFor({ state: 'hidden' });
+    assert.ok(await pool.evaluate(() => savedRequests.some(x => x.table === 'expenses' && x.data.description === 'Updated pool expense')));
     assert.deepEqual(await pool.locator('#editFacilitySelect option').evaluateAll(els => els.map(e => e.value)), ['pool']);
     await pool.goto(base + 'bookings.html');
     await pool.waitForURL('**/hourly-bookings.html?facility=pool');

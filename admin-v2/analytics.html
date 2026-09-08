@@ -57,10 +57,10 @@
 
     <section id="expensesPanel" hidden aria-label="Expenses">
       <h3>Expenses</h3>
-      <p id="expensesTotal" aria-live="polite"></p>
+      <div id="expensesTotal" class="expense-summary" aria-live="polite"></div>
       <label>Search expenses <input id="expenseSearch" type="search" placeholder="Facility, category, description or paid by"></label>
       <p id="expensesNote" role="status"></p>
-      <div id="expensesList"></div>
+      <div id="expensesList" class="enquiry-list"></div>
       <div id="expensePager"></div>
     </section>
     <div id="overviewPanel">
@@ -132,6 +132,7 @@
 <script src="../js/supabase-client.js?v=20260904"></script>
 <script src="js/admin-auth.js?v=20260907-admin2"></script>
 <script src="js/list-controls.js?v=20260907-admin2"></script>
-<script src="js/analytics.js?v=20260907-expenses"></script>
+<script src="js/admin-actions.js?v=20260908-expenses"></script>
+<script src="js/analytics.js?v=20260908-expenses"></script>
 </body>
 </html>

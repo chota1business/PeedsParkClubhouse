@@ -39,6 +39,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   document.getElementById("pageContent").hidden = false;
+  AdminActions.initExpenses({ staff, facilityIds: () => Object.keys(FACILITY_LABELS), onExpenseSaved: loadExpenses });
   expenseControls = createListControls({
     searchInputId: "expenseSearch", pagerContainerId: "expensePager", pageSize: 15,
     searchText: row => `${row.description || ""} ${row.category || ""} ${FACILITY_LABELS[row.facility_id] || "General"} ${row.paid_by || ""}`,
@@ -158,21 +159,10 @@ async function loadExpenses() {
 function renderExpenses() {
   const rows = expenseControls.apply(expenseRows);
   const page = expenseControls.paginate(rows);
-  document.getElementById("expensesTotal").textContent = `${rows.length} expenses · ₹${rows.reduce((sum, row) => sum + Number(row.amount || 0), 0).toFixed(2)}`;
+  document.getElementById("expensesTotal").innerHTML = AdminActions.expenseSummaryHtml(rows);
   const list = document.getElementById("expensesList");
-  list.replaceChildren();
-  for (const row of page.rows) {
-    const card = document.createElement("article");
-    card.className = "analytics-section";
-    const title = document.createElement("h4");
-    title.textContent = `${row.expense_date} · ₹${Number(row.amount).toFixed(2)} · ${FACILITY_LABELS[row.facility_id] || "General"}`;
-    const description = document.createElement("p");
-    description.textContent = `${row.category || "Other"} — ${row.description || "No description"}`;
-    const paidBy = document.createElement("p");
-    paidBy.textContent = `Paid by: ${row.paid_by || "Not specified"}`;
-    card.append(title, description, paidBy);
-    list.append(card);
-  }
+  list.innerHTML = page.rows.map(AdminActions.expenseCardHtml).join("");
+  list.querySelectorAll("[data-edit-expense]").forEach(button => button.addEventListener("click", () => AdminActions.editExpense(rows.find(x => String(x.id) === button.dataset.editExpense))));
   if (expenseRows.length && !rows.length) list.textContent = "No expenses match your search.";
   expenseControls.renderPager(rows.length);
 }

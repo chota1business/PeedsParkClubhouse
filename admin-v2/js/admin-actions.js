@@ -4,6 +4,15 @@ const AdminActions = (() => {
   const halls = ["ac_hall", "non_ac_hall", "lawn"];
   let config;
   let currentEnquiry = null;
+  let openExpense;
+  const escape = value => String(value ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function expenseCardHtml(x) {
+    const facility = x.facility_id ? labels[x.facility_id] || x.facility_id : "General / whole site";
+    return `<div class="enquiry-card" style="border-left-color:var(--brick);"><div class="enquiry-card-main"><div><strong>₹${Number(x.amount).toFixed(2)}</strong><span class="muted"> · ${escape(x.category)}</span></div><div class="muted small">${escape(x.expense_date)} · ${escape(facility)}${x.paid_by ? " · paid by " + escape(x.paid_by) : ""}</div><p class="enquiry-message">${escape(x.description)}</p></div><div class="enquiry-card-actions"><button type="button" class="btn btn-outline-dark btn-sm" data-edit-expense="${escape(x.id)}">✏️ Edit</button></div></div>`;
+  }
+  function expenseSummaryHtml(rows, period = "Selected period") {
+    return `<div class="stat-tile"><strong>₹${rows.reduce((sum,x)=>sum+Number(x.amount),0).toFixed(2)}</strong><span>${escape(period)} total</span></div><div class="stat-tile"><strong>${rows.length}</strong><span>Expense${rows.length === 1 ? "" : "s"} logged</span></div>`;
+  }
   const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
   const field = (name, label, type = "text", extra = "") => `<label>${label}<input name="${name}" type="${type}" ${extra}></label>`;
   const options = (ids) => ids.map(id => `<option value="${id}">${labels[id]}</option>`).join("");
@@ -172,18 +181,24 @@ const AdminActions = (() => {
 
   function setupExpense() {
     const trigger = document.getElementById("openAddExpenseBtn");
-    if (config.staff.role === "pool_manager") { trigger.hidden = true; return; }
+    let editing = null;
     const expense = modal("sharedAddExpense", "Add Expense", `<div class="modal-row">${field("expense_date", "Date", "date", "required")}${field("amount", "Amount (₹)", "number", 'required min="0" step="0.01"')}</div>
       <div class="modal-row"><label>Category<select name="category"><option value="maintenance">Maintenance</option><option value="wages">Wages</option><option value="supplies">Supplies</option><option value="utilities">Utilities</option><option value="other">Other</option></select></label>
       <label>Facility<select name="facility_id" required></select></label></div>
       <label>Description<textarea name="description" required rows="2"></textarea></label>${field("paid_by", "Paid by (optional)")}`);
     const form = expense.querySelector("form");
-    trigger.addEventListener("click", () => {
+    openExpense = (row = null) => {
+      editing = row;
       form.reset(); error(form);
-      form.elements.facility_id.innerHTML = options(config.facilityIds());
+      form.elements.facility_id.innerHTML = (config.staff.role === "admin" ? '<option value="">General / whole site</option>' : '') + options(config.facilityIds());
+      form.elements.facility_id.required = config.staff.role !== "admin";
+      form.elements.facility_id.value = config.facilityIds()[0];
       form.elements.expense_date.value = today(); form.elements.expense_date.max = today();
+      if (row) for (const key of ["expense_date","amount","category","facility_id","description","paid_by"]) form.elements[key].value = row[key] ?? "";
+      expense.querySelector("h3, h2").textContent = row ? "Edit expense" : "Add Expense";
       expense.hidden = false;
-    });
+    };
+    trigger?.addEventListener("click", () => openExpense());
     form.addEventListener("submit", async e => {
       e.preventDefault(); error(form);
       const button = form.querySelector('button[type="submit"]');
@@ -191,18 +206,24 @@ const AdminActions = (() => {
       button.disabled = true;
       try {
         const data = Object.fromEntries(new FormData(form));
-        if (!config.facilityIds().includes(data.facility_id)) throw new Error("Choose a facility you can manage.");
+        if (!config.facilityIds().includes(data.facility_id) && !(config.staff.role === "admin" && !data.facility_id)) throw new Error("Choose a facility you can manage.");
         if (!data.description.trim()) throw new Error("Enter an expense description.");
-        const { data: inserted, error: failure } = await supabaseClient.from("expenses").insert({ ...data, description: data.description.trim(), amount: Number(data.amount), created_by: config.staff.id }).select("id").single();
+        if (!Number.isFinite(Number(data.amount)) || Number(data.amount) <= 0) throw new Error("Enter an amount greater than zero.");
+        const fields = { ...data, facility_id: data.facility_id || null, description: data.description.trim(), amount: Number(data.amount) };
+        let query = supabaseClient.from("expenses");
+        query = editing ? query.update({ ...fields, updated_at: new Date().toISOString() }).eq("id", editing.id) : query.insert({ ...fields, created_by: config.staff.id });
+        const { data: inserted, error: failure } = await query.select("id").single();
         if (failure) throw failure;
         const { error: auditError } = await supabaseClient.from("audit_log").insert({ actor_id: config.staff.id,
-          action: "log_expense", table_name: "expenses", record_id: inserted?.id || null,
+          action: editing ? "edit_expense" : "log_expense", table_name: "expenses", record_id: inserted?.id || null,
           details: { category: data.category, amount: Number(data.amount), facility_id: data.facility_id } });
         if (auditError) console.error("Expense saved; audit entry failed:", auditError);
-        expense.hidden = true; notice("Expense saved. You can review it in Manager Feed → Expenses.");
+        expense.hidden = true; notice("Expense saved.");
+        await config.onExpenseSaved?.();
       } catch (err) { error(form, err.message || "Couldn't save this expense."); }
       finally { button.disabled = false; }
     });
   }
-  return { init, prepareEnquiry, bookingPayload };
+  return { init, prepareEnquiry, bookingPayload, expenseCardHtml, expenseSummaryHtml,
+    editExpense: row => openExpense(row), initExpenses: opts => { config = opts; setupExpense(); } };
 })();
