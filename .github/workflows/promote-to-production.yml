@@ -61,8 +61,6 @@ jobs:
         env:
           RELEASE_SHA: ${{ needs.select.outputs.sha }}
         run: |
-          git fetch origin main
-          git merge-base --is-ancestor origin/main "$RELEASE_SHA"
           git tag "production-$GITHUB_RUN_ID" "$RELEASE_SHA"
-          git push --atomic origin "$RELEASE_SHA:refs/heads/main" "refs/tags/production-$GITHUB_RUN_ID"
+          git push origin "refs/tags/production-$GITHUB_RUN_ID"
           echo "Production release: production-$GITHUB_RUN_ID ($RELEASE_SHA)" >> "$GITHUB_STEP_SUMMARY"

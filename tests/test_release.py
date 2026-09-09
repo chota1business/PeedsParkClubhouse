@@ -15,6 +15,11 @@ KEY = "sb_publishable_test"
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_production_recording_does_not_push_protected_main(self):
+        workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/promote-to-production.yml").read_text()
+        pushes = [line.strip() for line in workflow.splitlines() if line.strip().startswith("git push")]
+        self.assertEqual(pushes, ['git push origin "refs/tags/production-$GITHUB_RUN_ID"'])
+
     def test_environment_mismatch_rejected(self):
         with self.assertRaises(ValueError):
             release.validate_config("production", URL, KEY)

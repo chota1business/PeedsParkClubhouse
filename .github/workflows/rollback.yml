@@ -29,7 +29,7 @@ jobs:
         run: |
           [[ "$TARGET_TAG" =~ ^production-[0-9]+$ ]] || exit 1
           SHA=$(git rev-parse "refs/tags/$TARGET_TAG^{commit}")
-          git merge-base --is-ancestor "$SHA" origin/main
+          git merge-base --is-ancestor "$SHA" origin/staging
           git diff --exit-code origin/main "$SHA" -- supabase
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
   publish:
