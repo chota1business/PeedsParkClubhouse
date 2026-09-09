@@ -11,7 +11,6 @@ import os
 from pathlib import Path
 import re
 import shutil
-import subprocess
 import time
 import urllib.request
 
@@ -85,13 +84,7 @@ def build(root, output, environment, sha, url, key, run_id="local"):
     return manifest
 
 
-def verify(site, environment, sha):
-    manifest = json.loads(fetch(site.rstrip("/") + "/release.json?check=" + str(time.time_ns())))
-    if manifest.get("sha") != sha or manifest.get("environment") != environment:
-        raise ValueError("Site has not served the expected release yet")
-    text = fetch(site.rstrip("/") + "/config.js?check=" + str(time.time_ns())).decode()
-    config = json.loads(text.removeprefix("window.CONFIG = ").strip().removesuffix(";"))
-    url, key = config["SUPABASE_URL"], config["SUPABASE_ANON_KEY"]
+def check_database(environment, url, key):
     validate_config(environment, url, key)
     headers = {"apikey": key}
     fetch(url + "/auth/v1/settings", headers)
@@ -99,6 +92,16 @@ def verify(site, environment, sha):
     if not facilities:
         raise ValueError("Database schema/facility seed is missing")
     fetch(url + "/rest/v1/website_settings?select=id&limit=1", headers)
+
+
+def verify(site, environment, sha):
+    manifest = json.loads(fetch(site.rstrip("/") + "/release.json?check=" + str(time.time_ns())))
+    if manifest.get("sha") != sha or manifest.get("environment") != environment:
+        raise ValueError("Site has not served the expected release yet")
+    text = fetch(site.rstrip("/") + "/config.js?check=" + str(time.time_ns())).decode()
+    config = json.loads(text.removeprefix("window.CONFIG = ").strip().removesuffix(";"))
+    url, key = config["SUPABASE_URL"], config["SUPABASE_ANON_KEY"]
+    check_database(environment, url, key)
     return manifest
 
 
@@ -129,6 +132,8 @@ def main():
     args = parser.parse_args()
     try:
         if args.command == "build":
+            check_database(args.environment, os.environ.get("SUPABASE_URL", ""),
+                           os.environ.get("SUPABASE_ANON_KEY", ""))
             build(args.root, args.output, args.environment, args.sha,
                   os.environ.get("SUPABASE_URL", ""), os.environ.get("SUPABASE_ANON_KEY", ""), os.environ.get("GITHUB_RUN_ID", "local"))
         elif args.command == "schema":

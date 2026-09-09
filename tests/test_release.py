@@ -57,6 +57,16 @@ class ReleaseTests(unittest.TestCase):
         with patch.object(release, "fetch", return_value=json.dumps({"sha": "b" * 40, "environment": "staging"}).encode()), self.assertRaises(ValueError):
             release.verify("https://example.test", "staging", SHA)
 
+    def test_empty_database_rejected_before_release(self):
+        with patch.object(release, "fetch", side_effect=[b"{}", b"[]"]), self.assertRaises(ValueError):
+            release.check_database("staging", URL, KEY)
+
+    def test_database_preflight_is_read_only(self):
+        with patch.object(release, "fetch", side_effect=[b"{}", b'[{"id":"pool"}]', b'[{"id":1}]']) as fetch:
+            release.check_database("staging", URL, KEY)
+            self.assertEqual(fetch.call_count, 3)
+            self.assertTrue(all(call.args[0].startswith(URL + "/") for call in fetch.call_args_list))
+
     def test_failed_staging_run_cannot_be_promoted(self):
         manifest = {"sha": SHA, "environment": "staging", "repository": release.SOURCE_REPO, "run_id": "123"}
         for conclusion in ("failure", None, "cancelled"):
