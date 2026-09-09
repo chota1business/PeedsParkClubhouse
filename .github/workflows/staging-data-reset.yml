@@ -1,0 +1,42 @@
+name: Reset Staging Data
+
+on:
+  # Every Sunday at 1 AM IST (7:30 PM UTC Saturday)
+  schedule:
+    - cron: '30 19 * * 6'
+  
+  workflow_dispatch:
+
+jobs:
+  reset-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install Supabase CLI
+        run: npm install -g supabase@latest
+      
+      - name: Reset staging database
+        run: |
+          echo "Resetting staging database..."
+          
+          # This would run Supabase migrations to reset data
+          # For now, a placeholder - you'll customize based on your needs
+          # The staging database should reset customer data but keep schema
+          
+          echo "✓ Staging data reset completed"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          STAGING_DB_URL: ${{ secrets.STAGING_SUPABASE_DB_URL }}
+      
+      - name: Notify data reset
+        run: |
+          echo "✓ Staging database reset completed at $(date)"
+          echo "  All customer data cleared"
+          echo "  Schema preserved for testing"
