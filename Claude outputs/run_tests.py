@@ -9,7 +9,7 @@ Run from the repo root:
     playwright install chromium
     python tests/run_tests.py
 
-Tests the site's HTML/CSS/JS directly via file:// URLs — no server needed.
+Tests the site via a local HTTP server (http://localhost:8000).
 Requires a real internet connection (this site loads the real Supabase JS
 client from a CDN and talks to the real Supabase project for anything
 backend-related, so those pieces cannot be fully mocked offline).
@@ -57,10 +57,15 @@ gate, same convention as the old site's script.
 
 import sys
 import time
+import threading
+import socket
 from pathlib import Path
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 from playwright.sync_api import sync_playwright
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+BASE_URL = "http://localhost:8000"
+SERVER_PORT = 8000
 
 PUBLIC_PAGES = [
     "index.html",
@@ -94,14 +99,41 @@ def record(test_id, description, passed, detail=""):
 
 
 def file_url(rel_path):
-    # Use file:// URL with proper absolute path (file:// requires three slashes for absolute paths)
-    path = REPO_ROOT / rel_path
-    # On Windows, Path objects convert to backslashes; normalize to forward slashes
-    path_str = str(path).replace("\\", "/")
-    # Ensure it starts with / for absolute paths (already the case on Unix/Linux)
-    if not path_str.startswith("/"):
-        path_str = "/" + path_str
-    return f"file://{path_str}"
+    # Return HTTP URL to server running from REPO_ROOT
+    return f"{BASE_URL}/{rel_path}"
+
+
+def start_http_server():
+    """Start a simple HTTP server in a background thread, serving from REPO_ROOT."""
+    # Change to repo root so relative paths work
+    import os
+    original_cwd = os.getcwd()
+    os.chdir(REPO_ROOT)
+
+    class Handler(SimpleHTTPRequestHandler):
+        def log_message(self, format, *args):
+            # Suppress server log messages
+            pass
+
+    server = HTTPServer(("127.0.0.1", SERVER_PORT), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+
+    # Wait for server to be ready
+    time.sleep(0.5)
+    max_retries = 10
+    for _ in range(max_retries):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect(("127.0.0.1", SERVER_PORT))
+            sock.close()
+            print(f"✓ HTTP server started at {BASE_URL}")
+            return server
+        except ConnectionRefusedError:
+            time.sleep(0.1)
+
+    print("✗ Failed to start HTTP server", file=sys.stderr)
+    sys.exit(1)
 
 
 def collect_errors(page):
@@ -141,6 +173,9 @@ def mock_rpc_init_script(data_by_facility_json):
 
 
 def run():
+    # Start the HTTP server before browser tests
+    server = start_http_server()
+
     with sync_playwright() as p:
         browser = p.chromium.launch()
 
