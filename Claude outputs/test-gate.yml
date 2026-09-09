@@ -6,13 +6,14 @@ on:
       - staging
 
 jobs:
-  run-tests:
+  test:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
@@ -23,12 +24,13 @@ jobs:
       - name: Install Playwright browsers
         run: playwright install chromium
 
-      - name: Run automated tests
+      - name: Run tests
         run: python tests/run_tests.py
 
-      - name: Upload test artifacts on failure
+      - name: Upload artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ github.run_number }}
           path: test-results/
+          if-no-files-found: ignore
