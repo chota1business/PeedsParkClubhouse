@@ -1,6 +1,10 @@
 /* PeedsPark Club House — matches the old ls-park-clubhouse site's blue/gold/ink theme */
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
 
+html {
+  overflow-x: hidden;
+}
+
 :root {
   --coral: #E7C96B;       /* old site's gold — CTA buttons */
   --coral-dark: #B18B35;  /* old site's darker gold — hover/eyebrow accents */
@@ -14,7 +18,7 @@
   --white: #FFFFFF;
   --text: #17202A;
   --muted: #68727D;
-  --pastel-green: #D0F6CF 
+  --pastel-green: #D0F6CF
   --radius: 12px;
   --shadow: 0 8px 24px rgba(23, 32, 42, 0.12);
   --font-body: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -38,6 +42,7 @@ body {
   color: var(--text);
   background: var(--cream);
   line-height: 1.6;
+  overflow-x: hidden;
 }
 img { max-width: 100%; display: block; }
 a { color: var(--teal-dark); text-decoration: none; }
