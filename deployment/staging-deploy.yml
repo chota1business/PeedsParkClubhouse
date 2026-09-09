@@ -1,0 +1,60 @@
+name: Deploy to Staging
+on:
+  schedule:
+    - cron: '30 15 * * *' # 9 PM IST; GitHub may queue scheduled jobs.
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: staging-pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.repository == 'chota1business/PeedsParkClubhouse-Staging' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: chota1business/PeedsParkClubhouse
+          ref: staging
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install playwright==1.58.0
+      - run: python -m playwright install --with-deps chromium
+      - name: Test candidate
+        run: |
+          python -m unittest discover -s tests -p 'test_release.py'
+          python tests/run_tests.py --forms-only
+      - name: Capture tested revision
+        id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Build staging artifact
+        env:
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL || vars.STAGING_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY || vars.STAGING_SUPABASE_ANON_KEY }}
+          RELEASE_SHA: ${{ steps.revision.outputs.sha }}
+        run: python scripts/release.py build --environment staging --sha "$RELEASE_SHA"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - uses: actions/deploy-pages@v4
+        id: deployment
+      - name: Verify actual staging deployment
+        env:
+          SITE_URL: ${{ steps.deployment.outputs.page_url }}
+          RELEASE_SHA: ${{ steps.revision.outputs.sha }}
+        run: |
+          python scripts/release.py verify --site "$SITE_URL" --environment staging --sha "$RELEASE_SHA"
+          echo "Tested staging commit: $RELEASE_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo '[Promote to Production](https://github.com/chota1business/PeedsParkClubhouse/actions/workflows/promote-to-production.yml)' >> "$GITHUB_STEP_SUMMARY"

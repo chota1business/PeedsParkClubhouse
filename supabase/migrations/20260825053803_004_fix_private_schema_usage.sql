@@ -1,3 +1,4 @@
+-- Restored from the applied production migration history; no customer data.
 -- Fix a bug introduced in 003_security_hardening.sql: `revoke all on schema
 -- private from anon, authenticated` also revoked USAGE, which Postgres
 -- requires to invoke ANY function in that schema — including from inside an

@@ -1,35 +1,20 @@
--- Phase 9 (2/4): get_facility_slots() — powers the homepage's "click a slot
--- to book it" availability picker (ported/improved from the old site's
--- Apps Script availability endpoint). Computed server-side, from the same
--- tables check_hourly_capacity() and the booking pages already use, so the
--- picker can never show something as available that the DB would then
--- reject at submit time.
---
--- Returns one JSON shape for hall/lawn (type "fixed": Morning/Evening/Full
--- Day, each Available/Pending/Booked/Blocked) and another for pool/
--- badminton (type "hourly": one row per hour between the facility's
--- open_time/close_time).
---
--- SECURITY DEFINER + granted to anon: this only ever reads already-public
--- availability information (the same thing public_availability exposes),
--- never anything a customer shouldn't see, and takes no rate-limited or
--- mutating action — same trust boundary as the public_availability view.
-
-create or replace function public.get_facility_slots(p_facility_id text, p_date date)
-returns jsonb
-language plpgsql
-security definer
-set search_path to 'public'
-as $$
+-- Restored from the applied production migration history; no customer data.
+CREATE OR REPLACE FUNCTION public.get_facility_slots(p_facility_id text, p_date date)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 declare
   v_type text;
   v_capacity int;
   v_open time;
   v_close time;
+  v_member_hours_open boolean;
   v_result jsonb;
 begin
-  select type, capacity, open_time, close_time
-    into v_type, v_capacity, v_open, v_close
+  select type, capacity, open_time, close_time, member_hours_open
+    into v_type, v_capacity, v_open, v_close, v_member_hours_open
     from facilities
    where id = p_facility_id and active = true;
 
@@ -38,10 +23,6 @@ begin
   end if;
 
   if v_type in ('hall', 'lawn') then
-    -- Fixed slots: Morning 08:00-14:00, Evening 16:00-22:00, Full Day
-    -- covers (and conflicts with) both. These times aren't stored per
-    -- booking (booking_requests.slot is just a label) so they're fixed
-    -- constants here, matching the old site's SLOT_TIMES exactly.
     declare
       v_morning_status text := 'Available';
       v_evening_status text := 'Available';
@@ -66,10 +47,10 @@ begin
             from booking_requests
            where facility_id = p_facility_id
              and booking_date = p_date
-             and status in ('pending', 'approved')
+             and status = 'approved'
         loop
           declare
-            v_label text := case when r.status = 'approved' then 'Booked' else 'Pending' end;
+            v_label text := 'Booked';
           begin
             if r.slot = 'full_day' then
               v_morning_status := v_label;
@@ -105,10 +86,16 @@ begin
       slot_start time;
       slot_end time;
       v_blocked boolean;
-      v_has_exclusive boolean;
-      v_guests_booked int;
+      v_has_exclusive_approved boolean;
+      v_has_exclusive_pending boolean;
+      v_guests_approved int;
+      v_guests_pending int;
       v_status text;
       v_remaining int;
+      v_reserved boolean;
+      v_unblocked boolean;
+      v_has_approved boolean;
+      v_has_pending boolean;
     begin
       h := extract(hour from v_open)::int;
       while h < extract(hour from v_close)::int loop
@@ -123,31 +110,59 @@ begin
         ) into v_blocked;
 
         if v_type = 'pool' then
+          -- Exclusive-mode bookings, split by whether they're already
+          -- approved or still awaiting a decision, so a merely-pending
+          -- exclusive request shows "Pending" rather than a confirmed-looking
+          -- "Booked" to other customers.
           select exists (
             select 1 from hourly_bookings
              where facility_id = p_facility_id
                and booking_date = p_date
-               and status in ('pending', 'approved')
+               and status = 'approved'
                and mode = 'exclusive'
                and (start_time, end_time) overlaps (slot_start, slot_end)
-          ) into v_has_exclusive;
+          ) into v_has_exclusive_approved;
 
-          select coalesce(sum(guests), 0) into v_guests_booked
+          select exists (
+            select 1 from hourly_bookings
+             where facility_id = p_facility_id
+               and booking_date = p_date
+               and status = 'pending'
+               and mode = 'exclusive'
+               and (start_time, end_time) overlaps (slot_start, slot_end)
+          ) into v_has_exclusive_pending;
+
+          select coalesce(sum(guests), 0) into v_guests_approved
             from hourly_bookings
            where facility_id = p_facility_id
              and booking_date = p_date
-             and status in ('pending', 'approved')
+             and status = 'approved'
              and (start_time, end_time) overlaps (slot_start, slot_end);
 
-          v_remaining := greatest(coalesce(v_capacity, 0) - v_guests_booked, 0);
+          select coalesce(sum(guests), 0) into v_guests_pending
+            from hourly_bookings
+           where facility_id = p_facility_id
+             and booking_date = p_date
+             and status = 'pending'
+             and (start_time, end_time) overlaps (slot_start, slot_end);
+
+          v_remaining := greatest(coalesce(v_capacity, 0) - v_guests_approved - v_guests_pending, 0);
 
           if v_blocked then
             v_status := 'Blocked';
-          elsif v_has_exclusive then
-            v_status := 'Booked'; -- exclusive booking, whole pool taken
+          elsif v_has_exclusive_approved then
+            v_status := 'Booked';
             v_remaining := 0;
+          elsif v_has_exclusive_pending then
+            v_status := 'Pending';
+            v_remaining := 0;
+          elsif coalesce(v_capacity, 0) - v_guests_approved <= 0 then
+            -- Approved guests alone already fill it — genuinely confirmed full.
+            v_status := 'Booked';
           elsif v_remaining <= 0 then
-            v_status := 'Full';
+            -- Only fills up once pending (unconfirmed) requests are counted —
+            -- still awaiting a decision, could free up again.
+            v_status := 'Pending';
           else
             v_status := 'Available';
           end if;
@@ -160,19 +175,49 @@ begin
             'capacity', v_capacity
           );
         else
-          -- Badminton: this facility_id is already one specific court
-          -- (badminton_1 / badminton_2), capacity 1 — simple booked/available.
           select exists (
             select 1 from hourly_bookings
              where facility_id = p_facility_id
                and booking_date = p_date
-               and status in ('pending', 'approved')
+               and status = 'approved'
                and (start_time, end_time) overlaps (slot_start, slot_end)
-          ) into v_has_exclusive; -- reused as "taken" flag here
+          ) into v_has_approved;
+
+          select exists (
+            select 1 from hourly_bookings
+             where facility_id = p_facility_id
+               and booking_date = p_date
+               and status = 'pending'
+               and (start_time, end_time) overlaps (slot_start, slot_end)
+          ) into v_has_pending;
+
+          v_reserved := false;
+          if v_member_hours_open then
+            select exists (
+              select 1 from facility_reserved_windows
+               where facility_id = p_facility_id
+                 and (start_time, end_time) overlaps (slot_start, slot_end)
+            ) into v_reserved;
+
+            if v_reserved then
+              select exists (
+                select 1 from reserved_window_unblocks
+                 where facility_id = p_facility_id
+                   and booking_date = p_date
+                   and start_time <= slot_start
+                   and end_time >= slot_end
+              ) into v_unblocked;
+              if v_unblocked then
+                v_reserved := false;
+              end if;
+            end if;
+          end if;
 
           v_status := case
             when v_blocked then 'Blocked'
-            when v_has_exclusive then 'Booked'
+            when v_has_approved then 'Booked'
+            when v_has_pending then 'Pending'
+            when v_reserved then 'Reserved'
             else 'Available'
           end;
 
@@ -193,6 +238,4 @@ begin
 
   return jsonb_build_object('error', 'unsupported facility type');
 end;
-$$;
-
-grant execute on function public.get_facility_slots(text, date) to anon, authenticated;
+$function$;

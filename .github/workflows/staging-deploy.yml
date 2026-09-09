@@ -1,31 +1,12 @@
-name: Deploy to Staging
-
+name: Staging deployment location
 on:
-  # Runs every day at 9 PM IST (3:30 PM UTC)
-  schedule:
-    - cron: '30 15 * * *'
-
-  # Also allows manual trigger
   workflow_dispatch:
-
+permissions:
+  contents: read
 jobs:
-  deploy-staging:
+  staging-link:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: staging
-
-      # Deploy static files directly to GitHub Pages (staging domain)
-      - name: Deploy to GitHub Pages (staging)
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./
-          cname: staging.peedspark.com
-
-      - name: Notify deployment
-        run: |
-          echo "✅ Deployment to staging.peedspark.com completed successfully"
-          echo "Visit: https://staging.peedspark.com"
+      - run: |
+          echo 'Staging runs at 9 PM IST in its own Pages repository.' >> "$GITHUB_STEP_SUMMARY"
+          echo '[Open staging deployment](https://github.com/chota1business/PeedsParkClubhouse-Staging/actions/workflows/staging-deploy.yml)' >> "$GITHUB_STEP_SUMMARY"
