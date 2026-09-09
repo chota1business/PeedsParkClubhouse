@@ -404,7 +404,7 @@ def live_security_checks(base_url):
         text = body.decode("utf-8")
         values = {}
         for name in ("SUPABASE_URL", "SUPABASE_ANON_KEY"):
-            match = re.search(r'\b' + name + r'\s*:\s*"([^"\r\n]+)"', text)
+            match = re.search(r'\b' + name + r'"?\s*:\s*"([^"\r\n]+)"', text)
             if match:
                 values[name] = match.group(1)
         url, key = values.get("SUPABASE_URL", ""), values.get("SUPABASE_ANON_KEY", "")
