@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""
-PeedsPark Clubhouse — automated test script
-Repo: chota1business/PeedsParkClubhouse
-
-Run from the repo root:
-    pip install playwright
-    playwright install chromium
-    python tests/run_tests.py
-"""
+"""PeedsPark Clubhouse — automated test script"""
 
 import sys
 import os
@@ -15,35 +7,21 @@ import time
 import threading
 import socket
 from pathlib import Path
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from playwright.sync_api import sync_playwright
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BASE_URL = "http://localhost:8000"
 SERVER_PORT = 8000
 
-# CRITICAL: Change to repo root BEFORE server starts
-# This ensures SimpleHTTPRequestHandler serves from correct directory
-os.chdir(str(REPO_ROOT))
-
 PUBLIC_PAGES = [
-    "index.html",
-    "club-house.html",
-    "pool.html",
-    "badminton.html",
-    "ac-hall.html",
-    "non-ac-hall.html",
-    "lawn.html",
-    "privacy-policy.html",
+    "index.html", "club-house.html", "pool.html", "badminton.html",
+    "ac-hall.html", "non-ac-hall.html", "lawn.html", "privacy-policy.html",
 ]
 FACILITY_PICKER_PAGES = ["pool.html", "badminton.html", "ac-hall.html", "non-ac-hall.html", "lawn.html"]
 ADMIN_PROTECTED_PAGES = [
-    "admin-v2/dashboard.html",
-    "admin-v2/enquiries.html",
-    "admin-v2/bookings.html",
-    "admin-v2/hourly-bookings.html",
-    "admin-v2/manager-feed.html",
-    "admin-v2/blocks.html",
+    "admin-v2/dashboard.html", "admin-v2/enquiries.html", "admin-v2/bookings.html",
+    "admin-v2/hourly-bookings.html", "admin-v2/manager-feed.html", "admin-v2/blocks.html",
 ]
 ADMIN_LOGIN_PAGE = "admin-v2/index.html"
 ALL_PAGES = PUBLIC_PAGES + ADMIN_PROTECTED_PAGES + [ADMIN_LOGIN_PAGE]
@@ -91,13 +69,74 @@ def mock_rpc_init_script(data_by_facility_json):
     """
 
 
-def start_http_server():
-    """Start HTTP server. Already in correct directory via os.chdir() above."""
-    class QuietHandler(SimpleHTTPRequestHandler):
-        def log_message(self, format, *args):
-            pass
+class FileServingHandler(BaseHTTPRequestHandler):
+    """Custom HTTP handler that explicitly serves files from REPO_ROOT."""
+    
+    def do_GET(self):
+        """Serve files from REPO_ROOT."""
+        # Parse the path
+        path = self.path.split('?')[0].split('#')[0]
+        if path.startswith('/'):
+            path = path[1:]
+        
+        # Construct full file path
+        file_path = (REPO_ROOT / path).resolve()
+        
+        # Security: ensure path is within REPO_ROOT
+        try:
+            file_path.relative_to(REPO_ROOT)
+        except ValueError:
+            self.send_error(403, "Access forbidden")
+            return
+        
+        # Check if file exists
+        if not file_path.is_file():
+            self.send_error(404, "File not found")
+            return
+        
+        # Determine content type
+        content_type = self._get_content_type(file_path)
+        
+        # Read and serve the file
+        try:
+            with open(file_path, 'rb') as f:
+                content = f.read()
+            
+            self.send_response(200)
+            self.send_header("Content-type", content_type)
+            self.send_header("Content-Length", len(content))
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(content)
+        except Exception as e:
+            self.send_error(500, f"Internal server error: {str(e)[:100]}")
+    
+    def _get_content_type(self, file_path):
+        """Determine content type based on file extension."""
+        ext = file_path.suffix.lower()
+        types = {
+            '.html': 'text/html',
+            '.css': 'text/css',
+            '.js': 'application/javascript',
+            '.json': 'application/json',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.svg': 'image/svg+xml',
+            '.woff': 'font/woff',
+            '.woff2': 'font/woff2',
+        }
+        return types.get(ext, 'application/octet-stream')
+    
+    def log_message(self, format, *args):
+        """Suppress log messages."""
+        pass
 
-    server = HTTPServer(("127.0.0.1", SERVER_PORT), QuietHandler)
+
+def start_http_server():
+    """Start HTTP server with custom file serving handler."""
+    server = HTTPServer(("127.0.0.1", SERVER_PORT), FileServingHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
@@ -149,21 +188,19 @@ def run():
                 record(f"M-{rel}", f"{rel} has no horizontal overflow at 375px", False, str(e))
             page.close()
 
-        # ---------- A. Customer forms: honeypot + validation present ----------
+        # ---------- A. Customer forms ----------
         page = browser.new_page()
         page.goto(file_url("index.html"), wait_until="networkidle", timeout=15000)
         honeypots = page.locator("input[id^='hpField']").count()
         record("A1", "Honeypot field present on the Quick Enquiry form", honeypots > 0, f"found {honeypots}")
-
         date_inputs = page.locator("input[type=date]")
         min_attrs = [date_inputs.nth(i).get_attribute("min") for i in range(date_inputs.count())]
         record("A2", "Every date input on the homepage has a 'min' (past-date guard)", all(m for m in min_attrs), f"{min_attrs}")
-
         phone_inputs = page.locator("input[name=phone]")
         record("A3", "Phone input field present", phone_inputs.count() > 0)
         page.close()
 
-        # ---------- B. Nav present + correct active tab on every public page ----------
+        # ---------- B. Nav present ----------
         for rel in PUBLIC_PAGES:
             page = browser.new_page()
             page.goto(file_url(rel), wait_until="networkidle", timeout=15000)
@@ -205,7 +242,7 @@ def run():
                 record(f"F-privacy-{rel}", f"{rel} links to privacy-policy.html", "privacy-policy.html" in html)
             page.close()
 
-        # ---------- G. Facility pages: merged check-availability-and-book flow ----------
+        # ---------- G. Facility pages ----------
         page = browser.new_page()
         page.add_init_script(mock_rpc_init_script("""{
             '*': {
@@ -225,7 +262,6 @@ def run():
             html = page.inner_html("#pageSlotResult")
             record("G1", "ac-hall.html slot picker renders Available/Booked fixed slots",
                    "Evening" in html and "Request to Book" in html, html[:200])
-
             page.click("button:has-text('Request to Book')")
             page.wait_for_timeout(200)
             wrap_visible = page.locator("#bookingDetailsWrap").is_visible()
@@ -236,7 +272,6 @@ def run():
             record("G1-2", "ac-hall.html fixed-slot picker sequence", False, str(e))
         page.close()
 
-        # ---------- G3/G4: pool.html hourly ----------
         page = browser.new_page()
         page.add_init_script(mock_rpc_init_script("""{
             '*': {
@@ -256,7 +291,6 @@ def run():
             html2 = page.inner_html("#pageSlotResult")
             record("G3", "pool.html slot picker shows remaining capacity for hourly slots",
                    "3 of 8 spots left" in html2, html2[:200])
-
             buttons = page.query_selector_all("#pageSlotResult button:has-text('Request to Book')")
             if buttons:
                 buttons[0].click()
@@ -269,7 +303,6 @@ def run():
             record("G3-4", "pool.html hourly-slot picker sequence", False, str(e))
         page.close()
 
-        # ---------- G5: badminton.html resource booking ----------
         page = browser.new_page()
         page.add_init_script(mock_rpc_init_script("""{
             '*': {
@@ -294,7 +327,7 @@ def run():
             record("G5", "badminton.html hides mode/guests fields", False, str(e))
         page.close()
 
-        # ---------- H. Phase 10 UX fixes ----------
+        # ---------- H. UX fixes ----------
         page = browser.new_page()
         dialogs = []
         page.on("dialog", lambda d: (dialogs.append(d.message), d.dismiss()))
@@ -303,7 +336,6 @@ def run():
         phone_value = page.eval_on_selector("#enquiryPhone", "el => el.value")
         record("H1", "Phone field strips non-digits and caps at 10 as you type",
                phone_value == "9846718106", f"value={phone_value!r}")
-
         page.fill("#enquiryForm [name=customer_name]", "Test User")
         page.fill("#enquiryPhone", "12345")
         page.wait_for_timeout(3100)
@@ -316,7 +348,6 @@ def run():
                f"visible={note_visible} text={note_text!r} dialogs={dialogs}")
         page.close()
 
-        # ---------- H3: past hourly slot ----------
         page = browser.new_page()
         now = time.localtime()
         today_str = time.strftime("%Y-%m-%d", now)
@@ -345,7 +376,6 @@ def run():
             record("H3", "An already-passed hourly slot today shows 'Past', not bookable", False, str(e))
         page.close()
 
-        # ---------- H4 & H5: confirmation-first flows ----------
         page = browser.new_page()
         popped_up = []
         page.add_init_script("""
