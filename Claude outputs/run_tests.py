@@ -105,12 +105,26 @@ def file_url(rel_path):
 
 def start_http_server():
     """Start a simple HTTP server in a background thread, serving from REPO_ROOT."""
-    # Change to repo root so relative paths work
     import os
-    original_cwd = os.getcwd()
-    os.chdir(REPO_ROOT)
+    import urllib.parse
+
+    repo_root_str = str(REPO_ROOT)
 
     class Handler(SimpleHTTPRequestHandler):
+        def translate_path(self, path):
+            """Serve files from REPO_ROOT instead of cwd."""
+            # Remove query string and fragment
+            path = path.split('?', 1)[0]
+            path = path.split('#', 1)[0]
+            # Decode percent-encoded characters
+            path = urllib.parse.unquote(path)
+            # Remove leading slash
+            if path.startswith('/'):
+                path = path[1:]
+            # Join with repo root
+            full_path = os.path.join(repo_root_str, path)
+            return full_path
+
         def log_message(self, format, *args):
             # Suppress server log messages
             pass
