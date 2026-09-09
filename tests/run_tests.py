@@ -1,61 +1,16 @@
 #!/usr/bin/env python3
 """
-PeedsPark Clubhouse — automated test script (Phase 7, updated for the
-Phase 11 multi-page rebuild)
+PeedsPark Clubhouse — automated test script
 Repo: chota1business/PeedsParkClubhouse
 
 Run from the repo root:
     pip install playwright
     playwright install chromium
     python tests/run_tests.py
-
-Tests the site via a local HTTP server (http://localhost:8000).
-Requires a real internet connection (this site loads the real Supabase JS
-client from a CDN and talks to the real Supabase project for anything
-backend-related, so those pieces cannot be fully mocked offline).
-
-Phase 11 note: the site was rebuilt from a single scrolling homepage into
-8 pages (index, club-house hub, pool, badminton, ac-hall, non-ac-hall,
-lawn, privacy-policy), matching the old Apps Script site's nav-tab
-architecture. Every facility page now has its own merged "check
-availability, then book" flow (js/facility-page.js) instead of the old
-single homepage picker + 3 separate booking-form sections. This script's
-G/H sections were rewritten to test that flow on the new pages; sections
-A/C/F/S/M are unchanged in spirit, just re-pointed at the new page list.
-
-What this DOES cover, fully automated, no login needed:
-  - Every public + admin page loads with zero unexpected JS errors
-  - Mobile viewport: no horizontal overflow on any page
-  - Customer-facing forms: required fields, honeypot field present,
-    phone validation, past-date guard
-  - Every protected admin-v2 page redirects an unauthenticated visitor
-    straight to the login page (never silently renders staff data)
-  - Cross-page regression: consistent branding, footer privacy link,
-    no leftover git merge-conflict markers, nav present on every page
-  - Facility pages: slot picker renders correctly for fixed and hourly
-    facilities, clicking a slot reveals the right inline booking form,
-    a past hourly slot today renders as "Past" not bookable, a
-    successful booking shows a confirmation panel and never auto-opens
-    WhatsApp
-
-What this DOES NOT cover (needs a live login or live data — see the manual
-test-plan artifact instead, same as Section D was for the old site):
-  - Actually logging in and using the dashboard (Enquiries/Bookings/Hourly)
-  - Submitting a real enquiry/booking and confirming it lands in Supabase
-  - Rate limiting (3 submissions trigger "Too many submissions")
-  - RLS / security behaviour — that's covered by the live-database
-    verification already run directly against Supabase for every phase
-    (see docs/PHASE_STATUS.md), not by this browser-only script
-  - The DB-side courtesy re-check the old homepage picker used to do
-    client-side for multi-hour durations; the merged per-slot flow now
-    relies on the server's check_hourly_capacity trigger for that instead
-    (still enforced, just no longer duplicated client-side)
-
-Exits 0 if everything passes, 1 if anything fails — usable as a pre-checkin
-gate, same convention as the old site's script.
 """
 
 import sys
+import os
 import time
 import threading
 import socket
@@ -66,6 +21,10 @@ from playwright.sync_api import sync_playwright
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BASE_URL = "http://localhost:8000"
 SERVER_PORT = 8000
+
+# CRITICAL: Change to repo root BEFORE server starts
+# This ensures SimpleHTTPRequestHandler serves from correct directory
+os.chdir(str(REPO_ROOT))
 
 PUBLIC_PAGES = [
     "index.html",
@@ -89,7 +48,7 @@ ADMIN_PROTECTED_PAGES = [
 ADMIN_LOGIN_PAGE = "admin-v2/index.html"
 ALL_PAGES = PUBLIC_PAGES + ADMIN_PROTECTED_PAGES + [ADMIN_LOGIN_PAGE]
 
-results = []  # (id, description, passed: bool, detail: str)
+results = []
 
 
 def record(test_id, description, passed, detail=""):
@@ -99,41 +58,50 @@ def record(test_id, description, passed, detail=""):
 
 
 def file_url(rel_path):
-    # Return HTTP URL to server running from REPO_ROOT
     return f"{BASE_URL}/{rel_path}"
 
 
+def collect_errors(page):
+    errors = []
+    page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
+    page.on("console", lambda m: errors.append(f"console: {m.text}") if m.type == "error" else None)
+    return errors
+
+
+def is_benign(err: str) -> bool:
+    benign_markers = [
+        "ERR_TUNNEL", "ERR_NAME_NOT_RESOLVED", "ERR_INTERNET_DISCONNECTED", "Failed to fetch",
+        "Supabase library failed to load from CDN",
+    ]
+    return any(m in err for m in benign_markers)
+
+
+def mock_rpc_init_script(data_by_facility_json):
+    return f"""
+        window.supabase = {{
+          createClient: () => ({{
+            rpc: (fn, args) => {{
+              const byFacility = {data_by_facility_json};
+              const data = byFacility[args.p_facility_id] || byFacility['*'];
+              return Promise.resolve({{ data, error: null }});
+            }},
+            auth: {{ getSession: () => Promise.resolve({{ data: {{ session: null }} }}) }},
+          }})
+        }};
+    """
+
+
 def start_http_server():
-    """Start a simple HTTP server in a background thread, serving from REPO_ROOT."""
-    import os
-    import urllib.parse
-
-    repo_root_str = str(REPO_ROOT)
-
-    class Handler(SimpleHTTPRequestHandler):
-        def translate_path(self, path):
-            """Serve files from REPO_ROOT instead of cwd."""
-            # Remove query string and fragment
-            path = path.split('?', 1)[0]
-            path = path.split('#', 1)[0]
-            # Decode percent-encoded characters
-            path = urllib.parse.unquote(path)
-            # Remove leading slash
-            if path.startswith('/'):
-                path = path[1:]
-            # Join with repo root
-            full_path = os.path.join(repo_root_str, path)
-            return full_path
-
+    """Start HTTP server. Already in correct directory via os.chdir() above."""
+    class QuietHandler(SimpleHTTPRequestHandler):
         def log_message(self, format, *args):
-            # Suppress server log messages
             pass
 
-    server = HTTPServer(("127.0.0.1", SERVER_PORT), Handler)
+    server = HTTPServer(("127.0.0.1", SERVER_PORT), QuietHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
-    # Wait for server to be ready
+    # Wait for server to start
     time.sleep(0.5)
     max_retries = 10
     for _ in range(max_retries):
@@ -150,44 +118,7 @@ def start_http_server():
     sys.exit(1)
 
 
-def collect_errors(page):
-    errors = []
-    page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
-    page.on("console", lambda m: errors.append(f"console: {m.text}") if m.type == "error" else None)
-    return errors
-
-
-def is_benign(err: str) -> bool:
-    # Network-dependent noise that isn't a real bug in the code:
-    # a CDN hiccup or an unauthenticated Supabase call failing is expected
-    # and the site is designed to fail soft on both (see js/supabase-client.js).
-    benign_markers = [
-        "ERR_TUNNEL", "ERR_NAME_NOT_RESOLVED", "ERR_INTERNET_DISCONNECTED", "Failed to fetch",
-        "Supabase library failed to load from CDN",  # the site's own friendly fail-soft message
-    ]
-    return any(m in err for m in benign_markers)
-
-
-def mock_rpc_init_script(data_by_facility_json):
-    """Stubs window.supabase before the page's own script runs, so
-    js/supabase-client.js picks up a fake client instead of hitting the
-    real network — used to test frontend rendering deterministically."""
-    return f"""
-        window.supabase = {{
-          createClient: () => ({{
-            rpc: (fn, args) => {{
-              const byFacility = {data_by_facility_json};
-              const data = byFacility[args.p_facility_id] || byFacility['*'];
-              return Promise.resolve({{ data, error: null }});
-            }},
-            auth: {{ getSession: () => Promise.resolve({{ data: {{ session: null }} }}) }},
-          }})
-        }};
-    """
-
-
 def run():
-    # Start the HTTP server before browser tests
     server = start_http_server()
 
     with sync_playwright() as p:
@@ -233,9 +164,6 @@ def run():
         page.close()
 
         # ---------- B. Nav present + correct active tab on every public page ----------
-        # privacy-policy.html isn't itself a nav tab (it's linked from the
-        # footer/policies section only), so 0 active tabs there is correct —
-        # every other public page should highlight exactly one.
         for rel in PUBLIC_PAGES:
             page = browser.new_page()
             page.goto(file_url(rel), wait_until="networkidle", timeout=15000)
@@ -248,13 +176,6 @@ def run():
             page.close()
 
         # ---------- C. Admin auth gate ----------
-        # requireStaffSession() has two distinct correct fail-safe paths, and this
-        # test must accept either — the point is that staff-only content is never
-        # shown, not which specific path was taken:
-        #   1. Supabase loaded but there's no session -> redirects to index.html
-        #   2. Supabase itself failed to load (e.g. no network) -> shows the
-        #      "Not authorised" panel instead of silently doing nothing
-        # What must NEVER happen: #pageContent becomes visible without a session.
         for rel in ADMIN_PROTECTED_PAGES:
             page = browser.new_page()
             try:
@@ -285,13 +206,6 @@ def run():
             page.close()
 
         # ---------- G. Facility pages: merged check-availability-and-book flow ----------
-        # get_facility_slots() is a real DB round trip (already tested directly
-        # against Supabase — see docs/PHASE_STATUS.md), so here
-        # supabaseClient.rpc() is mocked to check FRONTEND behaviour only: does
-        # the slot list render correctly, and does clicking an Available slot
-        # reveal the right inline booking form for that page's config.
-
-        # G1/G2: ac-hall.html — fixed-slot facility
         page = browser.new_page()
         page.add_init_script(mock_rpc_init_script("""{
             '*': {
@@ -322,7 +236,7 @@ def run():
             record("G1-2", "ac-hall.html fixed-slot picker sequence", False, str(e))
         page.close()
 
-        # G3/G4: pool.html — hourly, capacity-based facility with mode+guests
+        # ---------- G3/G4: pool.html hourly ----------
         page = browser.new_page()
         page.add_init_script(mock_rpc_init_script("""{
             '*': {
@@ -355,7 +269,7 @@ def run():
             record("G3-4", "pool.html hourly-slot picker sequence", False, str(e))
         page.close()
 
-        # G5: badminton.html — hourly, resource-based (no mode/guests fields)
+        # ---------- G5: badminton.html resource booking ----------
         page = browser.new_page()
         page.add_init_script(mock_rpc_init_script("""{
             '*': {
@@ -380,9 +294,7 @@ def run():
             record("G5", "badminton.html hides mode/guests fields", False, str(e))
         page.close()
 
-        # ---------- H. Phase 10 UX fixes (still live on the homepage form) ----------
-        # H1/H2: phone field — live digit-only filtering + inline red error,
-        # never a native browser popup.
+        # ---------- H. Phase 10 UX fixes ----------
         page = browser.new_page()
         dialogs = []
         page.on("dialog", lambda d: (dialogs.append(d.message), d.dismiss()))
@@ -394,7 +306,7 @@ def run():
 
         page.fill("#enquiryForm [name=customer_name]", "Test User")
         page.fill("#enquiryPhone", "12345")
-        page.wait_for_timeout(3100)  # clear the anti-bot minimum-fill-time guard first
+        page.wait_for_timeout(3100)
         page.click("#enquiryForm button[type=submit]")
         page.wait_for_timeout(200)
         note_visible = page.locator("#enquiryPhoneNote").is_visible()
@@ -404,9 +316,7 @@ def run():
                f"visible={note_visible} text={note_text!r} dialogs={dialogs}")
         page.close()
 
-        # H3: on a facility page, an Available hourly slot whose start time
-        # has already passed today renders as "Past" (grey, not bookable),
-        # not a clickable "Request to Book" button.
+        # ---------- H3: past hourly slot ----------
         page = browser.new_page()
         now = time.localtime()
         today_str = time.strftime("%Y-%m-%d", now)
@@ -428,17 +338,14 @@ def run():
             page.wait_for_timeout(300)
             html = page.inner_html("#pageSlotResult")
             past_badged = "Past" in html
-            still_bookable_future = html.count("Request to Book") == 1  # only the future slot
+            still_bookable_future = html.count("Request to Book") == 1
             record("H3", "An already-passed hourly slot today shows 'Past', not bookable",
                    past_badged and still_bookable_future, html[:300])
         except Exception as e:
             record("H3", "An already-passed hourly slot today shows 'Past', not bookable", False, str(e))
         page.close()
 
-        # H4: confirmation-first flow — a successful submission never opens
-        # a second tab/window on its own; it swaps the form for an on-page
-        # confirmation with its own WhatsApp button the customer clicks.
-        # Checked on both the homepage enquiry form and a facility booking form.
+        # ---------- H4 & H5: confirmation-first flows ----------
         page = browser.new_page()
         popped_up = []
         page.add_init_script("""
@@ -450,12 +357,12 @@ def run():
             };
         """)
         page.on("popup", lambda p: popped_up.append(p.url))
-        page.on("dialog", lambda d: d.dismiss())  # safety net — none expected on a valid submission
+        page.on("dialog", lambda d: d.dismiss())
         try:
             page.goto(file_url("index.html"), wait_until="networkidle", timeout=15000)
             page.fill("#enquiryForm [name=customer_name]", "Test User")
             page.fill("#enquiryPhone", "9846718106")
-            page.wait_for_timeout(3100)  # clear the anti-bot minimum-fill-time guard first
+            page.wait_for_timeout(3100)
             page.click("#enquiryForm button[type=submit]")
             page.wait_for_timeout(500)
             form_hidden = page.eval_on_selector("#enquiryForm", "el => el.hidden")
@@ -468,8 +375,6 @@ def run():
             record("H4", "Enquiry form confirmation-first flow", False, str(e))
         page.close()
 
-        # H5: same confirmation-first check on a facility page's merged
-        # booking form (booking_code instead of enquiry_code).
         page = browser.new_page()
         popped_up2 = []
         page.add_init_script(mock_rpc_init_script("""{
@@ -479,13 +384,9 @@ def run():
               full_day: { label: 'Full Day', status: 'Booked' },
             }}
         }"""))
-        page.add_init_script("""
-            window.__origCreateClient = window.supabase && window.supabase.createClient;
-        """)
         page.on("popup", lambda p: popped_up2.append(p.url))
         try:
             page.goto(file_url("ac-hall.html"), wait_until="networkidle", timeout=15000)
-            # Re-stub rpc after page load so the same mock also answers submit_booking_request.
             page.evaluate("""() => {
                 supabaseClient.rpc = (fn, args) => {
                     if (fn === 'get_facility_slots') {
