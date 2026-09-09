@@ -38,9 +38,10 @@ workflow on main. No revision input is needed. The workflow selects the exact
 revision currently served by staging and requires that its deployment run passed.
 It rejects divergent history and database/function changes requiring separate
 review. It builds that revision with production public configuration, verifies
-the live deployment, then fast-forwards main and records a `production-NNN` tag.
-Avoid concurrent manual changes to main during promotion; a moved main can
-prevent release recording. Never force push to work around that failure.
+the live deployment, then records a `production-NNN` tag. It does not push to
+protected main. The production tag and live release manifest identify what is
+deployed; main holds the approved release tooling and database baseline. Update
+main through a pull request when changing that baseline, then synchronize staging.
 
 ## Database and functions
 
