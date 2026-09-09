@@ -94,7 +94,14 @@ def record(test_id, description, passed, detail=""):
 
 
 def file_url(rel_path):
-    return f"file://{REPO_ROOT / rel_path}"
+    # Use file:// URL with proper absolute path (file:// requires three slashes for absolute paths)
+    path = REPO_ROOT / rel_path
+    # On Windows, Path objects convert to backslashes; normalize to forward slashes
+    path_str = str(path).replace("\\", "/")
+    # Ensure it starts with / for absolute paths (already the case on Unix/Linux)
+    if not path_str.startswith("/"):
+        path_str = "/" + path_str
+    return f"file://{path_str}"
 
 
 def collect_errors(page):
