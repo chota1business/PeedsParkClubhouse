@@ -1,0 +1,54 @@
+name: Rollback Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_tag:
+        description: 'Git tag to rollback to (e.g., v2026.09.07-090000)'
+        required: true
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Configure git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+      
+      - name: Checkout tag and revert main
+        run: |
+          git fetch origin
+          git checkout ${{ github.event.inputs.target_tag }}
+          git checkout -b rollback-${{ github.event.inputs.target_tag }}
+          git push origin rollback-${{ github.event.inputs.target_tag }}
+      
+      - name: Reset main to previous tag
+        run: |
+          git checkout main
+          git reset --hard ${{ github.event.inputs.target_tag }}
+          git push origin main --force-with-lease
+      
+      # Redeploy from rolled-back version (static files only)
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./
+          cname: peedspark.com
+      
+      - name: Post rollback notification
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 1,
+              body: `## ⚠ ROLLBACK EXECUTED\n\n**Rolled back to:** ${{ github.event.inputs.target_tag }}\n**Time:** ${new Date().toISOString()}\n\n✓ Frontend redeployed\n\nVisit https://peedspark.com to verify`
+            });

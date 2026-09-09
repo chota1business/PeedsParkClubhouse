@@ -1,68 +1,42 @@
 name: Rollback Production
-
 on:
   workflow_dispatch:
     inputs:
       target_tag:
-        description: 'Git tag to rollback to (e.g., v2026.09.07-090000)'
+        description: 'Previously deployed production-NNN tag (frontend only)'
         required: true
-
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: production-release
+  cancel-in-progress: false
 jobs:
-  rollback:
+  select:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    
+    outputs:
+      sha: ${{ steps.target.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
-      - name: Configure git
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-      
-      - name: Checkout tag and revert main
-        run: |
-          git fetch origin
-          git checkout ${{ github.event.inputs.target_tag }}
-          git checkout -b rollback-${{ github.event.inputs.target_tag }}
-          git push origin rollback-${{ github.event.inputs.target_tag }}
-      
-      - name: Reset main to previous tag
-        run: |
-          git checkout main
-          git reset --hard ${{ github.event.inputs.target_tag }}
-          git push origin main --force-with-lease
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      # Redeploy from rolled-back version
-      - name: Build and redeploy frontend
-        run: npm run build
+      - name: Validate release tag and database compatibility
+        id: target
         env:
-          VITE_API_URL: ${{ secrets.PROD_SUPABASE_URL }}
-          VITE_ANON_KEY: ${{ secrets.PROD_SUPABASE_ANON_KEY }}
-      
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          cname: peedspark.com
-      
-      - name: Post rollback notification
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: 1,
-              body: `## ⚠ ROLLBACK EXECUTED\n\n**Rolled back to:** ${{ github.event.inputs.target_tag }}\n**Time:** ${new Date().toISOString()}\n\n✓ Frontend redeployed\n\nVisit https://peedspark.com to verify`
-            });
+          TARGET_TAG: ${{ inputs.target_tag }}
+        run: |
+          [[ "$TARGET_TAG" =~ ^production-[0-9]+$ ]] || exit 1
+          SHA=$(git rev-parse "refs/tags/$TARGET_TAG^{commit}")
+          git merge-base --is-ancestor "$SHA" origin/main
+          git diff --exit-code origin/main "$SHA" -- supabase
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+  publish:
+    needs: select
+    uses: ./.github/workflows/inject-secrets.yml
+    with:
+      sha: ${{ needs.select.outputs.sha }}
+    secrets:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}

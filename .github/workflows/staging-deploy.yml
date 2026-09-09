@@ -1,54 +1,12 @@
-name: Deploy to Staging
-
+name: Staging deployment location
 on:
-  # Runs every day at 9 PM IST (3:30 PM UTC)
-  schedule:
-    - cron: '30 15 * * *'
-  
-  # Also allows manual trigger
   workflow_dispatch:
-
+permissions:
+  contents: read
 jobs:
-  deploy-staging:
+  staging-link:
     runs-on: ubuntu-latest
-    
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: staging
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      # Frontend: Build and deploy to GitHub Pages (staging domain)
-      - name: Build frontend
-        run: npm run build
-        env:
-          VITE_API_URL: ${{ secrets.STAGING_SUPABASE_URL }}
-          VITE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
-      
-      - name: Deploy to GitHub Pages (staging)
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          cname: staging.peedspark.com
-      
-      - name: Notify deployment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.repos.createDeployment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: 'staging',
-              environment: 'staging',
-              description: 'Deployed to staging.peedspark.com',
-              auto_merge: false,
-              required_contexts: []
-            });
+      - run: |
+          echo 'Staging runs at 9 PM IST in its own Pages repository.' >> "$GITHUB_STEP_SUMMARY"
+          echo '[Open staging deployment](https://github.com/chota1business/PeedsParkClubhouse-Staging/actions/workflows/staging-deploy.yml)' >> "$GITHUB_STEP_SUMMARY"

@@ -4,7 +4,6 @@ on:
   pull_request:
     branches:
       - staging
-      - main
 
 jobs:
   test:
@@ -14,25 +13,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+          python-version: '3.11'
 
       - name: Install Playwright
-        run: python -m pip install playwright==1.58.0
+        run: pip install playwright
 
       - name: Install Playwright browsers
-        run: python -m playwright install --with-deps chromium
+        run: playwright install chromium
 
       - name: Run tests
-        run: |
-          python -m unittest discover -s tests -p 'test_release.py'
-          python tests/run_tests.py --forms-only
+        run: python tests/run_tests.py
 
       - name: Upload artifacts on failure
         if: failure()
