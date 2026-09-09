@@ -1,0 +1,34 @@
+name: Test Gate
+
+on:
+  pull_request:
+    branches:
+      - staging
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Playwright
+        run: pip install playwright
+
+      - name: Install Playwright browsers
+        run: playwright install chromium
+
+      - name: Run automated tests
+        run: python tests/run_tests.py
+
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ github.run_number }}
+          path: test-results/
