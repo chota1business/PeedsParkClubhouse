@@ -1,3 +1,4 @@
+-- Restored from the applied production migration history; no customer data.
 -- Phase 2: let staff write their own audit trail entries directly (safe because
 -- there is still no UPDATE/DELETE policy for staff on audit_log — entries are
 -- write-once from the client's perspective, tamper-proof after the fact).

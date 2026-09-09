@@ -1,3 +1,4 @@
+-- Restored from the applied production migration history; no customer data.
 -- Phase 10 (3/3): wire up the previously-orphaned facilities.member_hours_open
 -- column into an actual "members-reserved badminton hours" feature — the
 -- old Apps Script site's BADMINTON_RESERVED_WINDOWS concept (05:00-08:00 and

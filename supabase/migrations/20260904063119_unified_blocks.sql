@@ -1,25 +1,6 @@
--- 021_unified_blocks.sql
--- One block mechanism for every facility.
---
--- Before this migration there were three separate mechanisms:
---   * blocks                    one-off From/To datetime, Admin-only (maintenance)
---   * facility_reserved_windows hard-coded badminton member hours (05-08, 17-23)
---   * reserved_window_unblocks  per-date "open this window" overrides
---
--- After it, `blocks` is the single source of truth:
---   * block_type   badminton_members | maintenance | closure
---   * group_id     one multi-facility submission = one group
---   * one-off      start_at / end_at (timestamptz)      is_recurring = false
---   * recurring    start_time / end_time (IST wall clock) + days_of_week
---                  + optional valid_from / valid_to       is_recurring = true
---   * block_exceptions  per-date, per-hour "open this" overrides against any block
---
--- The old badminton tables are migrated across and left in place (unused) as a
--- rollback path. They are NOT dropped here.
+-- Restored from the applied production migration history; no customer data.
+-- 021_unified_blocks.sql — one block mechanism for every facility (see repo file for full commentary)
 
--- ------------------------------------------------------------------
--- 1. Extend blocks
--- ------------------------------------------------------------------
 alter table blocks
   add column if not exists block_type   text    not null default 'maintenance',
   add column if not exists group_id     uuid    not null default gen_random_uuid(),
@@ -52,9 +33,6 @@ alter table blocks
 create index if not exists idx_blocks_group on blocks(group_id);
 create index if not exists idx_blocks_recurring on blocks(facility_id, is_recurring, active);
 
--- ------------------------------------------------------------------
--- 2. Exceptions: open a specific date/hour range inside any block
--- ------------------------------------------------------------------
 create table if not exists block_exceptions (
   id             uuid primary key default gen_random_uuid(),
   block_id       uuid not null references blocks(id) on delete cascade,
@@ -82,9 +60,6 @@ create policy block_exceptions_admin_delete on block_exceptions for delete using
 revoke all on block_exceptions from anon;
 grant select, insert, delete on block_exceptions to authenticated;
 
--- ------------------------------------------------------------------
--- 3. Migrate badminton member hours + existing unblocks
--- ------------------------------------------------------------------
 do $$
 declare
   w record;
@@ -93,7 +68,6 @@ declare
   v_group_1723 uuid := gen_random_uuid();
   v_block_id uuid;
 begin
-  -- Skip if already migrated (idempotent)
   if exists (select 1 from blocks where block_type = 'badminton_members') then
     return;
   end if;
@@ -124,12 +98,6 @@ begin
   end loop;
 end $$;
 
--- ------------------------------------------------------------------
--- 4. Core helper: which block (if any) covers this facility/date/time range?
---    Returns the block_type with highest priority (closure > maintenance >
---    badminton_members), or null when the range is open.
---    All times are IST wall-clock, matching slot labels and facility hours.
--- ------------------------------------------------------------------
 create or replace function public.facility_block_type(
   p_facility_id text, p_date date, p_start time, p_end time
 ) returns text
@@ -143,12 +111,10 @@ as $$
    where b.facility_id = p_facility_id
      and b.active
      and (
-       -- one-off block: compare in IST
        (not b.is_recurring
           and b.start_at < ((p_date + p_end)   at time zone 'Asia/Kolkata')
           and b.end_at   > ((p_date + p_start) at time zone 'Asia/Kolkata'))
        or
-       -- recurring rule: day-of-week + validity window + time overlap
        (b.is_recurring
           and extract(dow from p_date)::int = any (b.days_of_week)
           and (b.valid_from is null or p_date >= b.valid_from)
@@ -156,7 +122,6 @@ as $$
           and b.start_time < p_end
           and b.end_time   > p_start)
      )
-     -- an exception that fully covers the requested range opens it
      and not exists (
        select 1 from block_exceptions e
         where e.block_id = b.id
@@ -171,7 +136,6 @@ $$;
 revoke all on function public.facility_block_type(text, date, time, time) from public, anon;
 grant execute on function public.facility_block_type(text, date, time, time) to authenticated;
 
--- Public label for a block type, shared by get_facility_slots and the grid.
 create or replace function public.block_type_label(p_type text) returns text
 language sql immutable
 as $$
@@ -183,11 +147,6 @@ as $$
 $$;
 grant execute on function public.block_type_label(text) to anon, authenticated;
 
--- ------------------------------------------------------------------
--- 5. get_facility_slots — read blocks through the helper.
---    Hall/Lawn: now evaluated per slot (Morning 08-14, Evening 16-22,
---    Full Day 08-22) instead of "any block that day blocks the whole day".
--- ------------------------------------------------------------------
 create or replace function public.get_facility_slots(p_facility_id text, p_date date)
 returns jsonb
 language plpgsql
@@ -377,13 +336,6 @@ begin
 end;
 $function$;
 
--- ------------------------------------------------------------------
--- 6. check_hourly_capacity — block enforcement via the helper (replaces the
---    facility_reserved_windows / reserved_window_unblocks check). Blocks are
---    enforced on INSERT and on any UPDATE that changes facility/date/time, so
---    a status or payment edit on an existing booking is never rejected by a
---    block added later.
--- ------------------------------------------------------------------
 create or replace function public.check_hourly_capacity()
 returns trigger
 language plpgsql
@@ -397,7 +349,7 @@ declare
   v_schedule_changed boolean;
 begin
   if new.status not in ('pending','approved') then
-    return new; -- rejected/cancelled rows never consume capacity
+    return new;
   end if;
 
   select capacity into fac_capacity from facilities where id = new.facility_id;
@@ -465,11 +417,6 @@ begin
 end;
 $function$;
 
--- ------------------------------------------------------------------
--- 7. NEW: block enforcement for Hall/Lawn booking_requests. Previously only
---    the UI hid blocked slots — nothing at the database stopped a request
---    landing on a blocked date.
--- ------------------------------------------------------------------
 create or replace function public.check_booking_request_block()
 returns trigger
 language plpgsql
@@ -504,11 +451,6 @@ create trigger trg_check_booking_request_block
   before insert or update on booking_requests
   for each row execute function check_booking_request_block();
 
--- ------------------------------------------------------------------
--- 8. Admin grid RPC: per-hour (or per-slot for Hall/Lawn) block picture for
---    one facility on one date, including which block/exception is behind it,
---    so the admin page can toggle hours without re-implementing the rules.
--- ------------------------------------------------------------------
 create or replace function public.get_block_grid(p_facility_id text, p_date date)
 returns jsonb
 language plpgsql
@@ -550,7 +492,6 @@ begin
     b_id := null; b_group := null; b_type := null; b_reason := null; b_rec := null;
     ex_id := null; ex_reason := null;
 
-    -- highest-priority block covering this tile, ignoring exceptions
     select bb.id, bb.group_id, bb.block_type, bb.reason, bb.is_recurring
       into b_id, b_group, b_type, b_reason, b_rec
       from blocks bb
@@ -596,9 +537,6 @@ $function$;
 revoke all on function public.get_block_grid(text, date) from public, anon;
 grant execute on function public.get_block_grid(text, date) to authenticated;
 
--- ------------------------------------------------------------------
--- 9. member_hours_open no longer drives anything; leave the column, note it.
--- ------------------------------------------------------------------
 comment on column facilities.member_hours_open is 'Deprecated by 021_unified_blocks: member hours are now badminton_members rows in blocks.';
 comment on table facility_reserved_windows is 'Deprecated by 021_unified_blocks (migrated into blocks). Kept for rollback; safe to drop later.';
 comment on table reserved_window_unblocks is 'Deprecated by 021_unified_blocks (migrated into block_exceptions). Kept for rollback; safe to drop later.';

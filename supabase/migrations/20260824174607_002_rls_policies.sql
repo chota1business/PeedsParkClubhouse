@@ -1,3 +1,4 @@
+-- Restored from the applied production migration history; no customer data.
 -- PeedsPark Club House — Phase 0/1: Row Level Security
 -- Run after 001_init_schema.sql.
 -- Model: customers never authenticate (anon key, insert-only on public tables).

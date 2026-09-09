@@ -1,3 +1,4 @@
+-- Restored from the applied production migration history; no customer data.
 -- Phase 10 cleanup: fix advisor findings introduced by this phase's own
 -- migrations (015/017) rather than leaving them for later. Everything else
 -- get_advisors flagged is pre-existing from earlier phases and untouched.

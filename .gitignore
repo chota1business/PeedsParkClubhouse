@@ -2,3 +2,5 @@
 # .github/workflows/inject-secrets.yml (from GitHub repository secrets),
 # never committed. See config.js's own comments for local dev setup.
 config.js
+__pycache__/
+_site/

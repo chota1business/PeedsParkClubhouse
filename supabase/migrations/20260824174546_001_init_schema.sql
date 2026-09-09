@@ -1,3 +1,4 @@
+-- Restored from the applied production migration history; no customer data.
 -- PeedsPark Club House — Phase 0: initial schema
 -- Run in order: 001_init_schema.sql, then 002_rls_policies.sql
 -- Safe to re-run: uses IF NOT EXISTS / CREATE OR REPLACE throughout.

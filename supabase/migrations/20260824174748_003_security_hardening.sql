@@ -1,3 +1,4 @@
+-- Restored from the applied production migration history; no customer data.
 -- PeedsPark — Phase 0 follow-up: close findings from the Supabase security advisor.
 -- 1) Move RLS helper functions into a `private` schema so PostgREST never exposes
 --    them as public /rest/v1/rpc/... endpoints. They still work perfectly inside
@@ -9,8 +10,7 @@
 -- 3) Mark the public_availability view security_barrier to prevent a
 --    maliciously crafted filter from leaking filtered-out rows via planner
 --    side channels (it must stay security-definer-style since it deliberately
---    bypasses the underlying tables' staff-only RLS to show safe columns only —
---    this is the one advisor ERROR left unresolved, by design: see README note).
+--    bypasses the underlying tables' staff-only RLS to show safe columns only).
 
 create schema if not exists private;
 revoke all on schema private from anon, authenticated;

@@ -1,23 +1,6 @@
--- Phase 5: owner alert email on every new enquiry / booking_request / hourly_booking.
---
--- How this works end to end: an AFTER INSERT trigger on each of the three
--- public-submission tables calls the `notify-owner` Edge Function (deployed
--- separately) via pg_net (async HTTP from Postgres — the trigger never blocks
--- or fails the customer's submission if the email send is slow or fails).
--- The Edge Function does the actual Resend API call.
---
--- Auth: the Edge Function is deployed with verify_jwt=false (it has no normal
--- caller, only this trigger) and instead checks a shared secret header
--- (x-webhook-secret) against its own WEBHOOK_SECRET env var. That secret is
--- generated here and stored in Supabase Vault — never hardcoded in a
--- migration file that ends up in a public-ish git repo.
-
+-- Restored from the applied production migration history; no customer data.
 create extension if not exists pg_net;
 
--- Generate the shared secret once, store it in Vault. If this migration is
--- ever re-run, don't rotate it silently (vault.create_secret would error on
--- a duplicate name anyway) — that's intentional, rotating requires updating
--- both sides (this + the Edge Function secret) deliberately.
 do $$
 begin
   if not exists (select 1 from vault.secrets where name = 'webhook_secret') then
@@ -25,7 +8,6 @@ begin
   end if;
 end $$;
 
--- Project URL is stable and not sensitive — safe to hardcode.
 create or replace function private.notify_owner(p_type text, p_record jsonb)
 returns void
 language plpgsql

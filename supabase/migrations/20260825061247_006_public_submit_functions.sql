@@ -1,3 +1,4 @@
+-- Restored from the applied production migration history; no customer data.
 -- Fix: Postgres requires a row to pass its SELECT policy to appear in an
 -- INSERT ... RETURNING result. Anonymous customers correctly have NO select
 -- access to enquiries/booking_requests/hourly_bookings (that's what keeps
@@ -13,9 +14,6 @@
 -- than before, since it can no longer echo back anything else either.
 -- All existing protections (rate limit trigger, capacity/overlap trigger)
 -- still fire, because those are table-level triggers, independent of RLS.
---
--- The same pattern must be used for booking_requests/hourly_bookings once
--- their public submission forms are built (Phase 3/4) — see docs/PHASE_STATUS.md.
 
 create or replace function public.submit_enquiry(
   p_customer_name text,
@@ -39,4 +37,6 @@ begin
 end;
 $$;
 
+grant execute on function public.submit_enquiry to anon, authenticated;
+revoke execute on function public.submit_enquiry from public;
 grant execute on function public.submit_enquiry to anon, authenticated;
