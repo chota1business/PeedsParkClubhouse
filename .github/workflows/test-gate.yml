@@ -6,49 +6,53 @@ on:
       - staging
 
 jobs:
-  run-tests:
+  test:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
       
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          node-version: '18'
+          python-version: '3.11'
       
-      - name: Install dependencies
-        run: npm install
+      - name: Install Playwright
+        run: pip install playwright
       
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: playwright install
       
-      - name: Run automated tests
+      - name: Run tests
         run: python tests/run_tests.py
-        env:
-          PLAYWRIGHT_TEST_REPORTER: github
       
-      - name: Upload test report
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v3
         with:
-          name: test-report-${{ github.run_number }}
+          name: test-results
           path: test-results/
       
-      - name: Post test results comment
+      - name: Post test results to PR
         if: always()
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
+            let comment = '## Test Results\n';
+            
             try {
-              const testReport = fs.readFileSync('test-results/summary.txt', 'utf8');
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: `## Test Results\n\`\`\`\n${testReport}\n\`\`\``
-              });
+              const results = JSON.parse(fs.readFileSync('test-results.json', 'utf8'));
+              comment += `✅ Tests passed: ${results.passed}\n`;
+              comment += `❌ Tests failed: ${results.failed}\n`;
             } catch (e) {
-              console.log('No test summary file found');
+              comment += '⚠️ Could not parse test results\n';
             }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
