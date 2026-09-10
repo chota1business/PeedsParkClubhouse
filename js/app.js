@@ -209,9 +209,10 @@ function showEnquiryConfirmation(row, payload) {
   panel.innerHTML = confirmationPanelHtml({
     heading: "Enquiry received!",
     reference: row.enquiry_code,
-    message: `Your enquiry for ${payload.facility_id || "Peeds Park"} is sent for confirmation.`,
+    message: `Your enquiry is sent for confirmation.`,
     waLink,
     anotherText: "Send another enquiry",
+    payload,
   });
   panel.hidden = false;
   form.hidden = true;
@@ -222,7 +223,22 @@ function showEnquiryConfirmation(row, payload) {
 // Shared markup for the enquiry confirmation panel — mirrors the old site's
 // confirmation card (icon, reference, message, a WhatsApp button the
 // customer taps themselves, and a link back to the form).
-function confirmationPanelHtml({ heading, reference, message, waLink, anotherText }) {
+function confirmationPanelHtml({ heading, reference, message, waLink, anotherText, payload }) {
+  let detailsHtml = '';
+  if (payload) {
+    const details = [];
+    if (payload.facility_id) details.push(`<strong>Facility:</strong> ${payload.facility_id}`);
+    if (payload.preferred_date) details.push(`<strong>Preferred date:</strong> ${formatDateForDisplay(payload.preferred_date)}`);
+    if (payload.guests) details.push(`<strong>Guests:</strong> ${payload.guests}`);
+    if (payload.message) details.push(`<strong>Message:</strong> ${payload.message}`);
+
+    if (details.length > 0) {
+      detailsHtml = `<div style="text-align:left;background:#f5f5f5;padding:14px;border-radius:8px;margin:16px 0;font-weight:500;font-size:0.95rem;">
+        ${details.map(d => `<p style="margin:6px 0;">${d}</p>`).join('')}
+      </div>`;
+    }
+  }
+
   return `
     <div style="text-align:center;">
       <div style="font-size:40px;margin-bottom:10px;">✅</div>
@@ -230,9 +246,18 @@ function confirmationPanelHtml({ heading, reference, message, waLink, anotherTex
       <p class="muted" style="margin:0 0 6px;">Reference</p>
       <p style="font-size:1.2rem;font-weight:700;margin:0 0 16px;">${reference}</p>
       <p style="font-weight:700;margin:0 0 16px;">${message}</p>
+      ${detailsHtml}
       <a class="btn btn-primary" href="${waLink}" target="_blank" rel="noopener">💬 Send WhatsApp Message</a>
       <br><a href="#" data-send-another style="display:inline-block;margin-top:14px;font-weight:600;">${anotherText}</a>
     </div>`;
+}
+
+// Format date for display (convert YYYY-MM-DD to readable format)
+function formatDateForDisplay(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr + 'T00:00:00');
+  const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+  return date.toLocaleDateString('en-IN', options);
 }
 
 // Swaps the confirmation panel back out for the form, so the customer can

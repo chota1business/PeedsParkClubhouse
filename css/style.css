@@ -436,6 +436,7 @@ body.lightbox-open { overflow: hidden; }
 .hp-field { position: absolute; left: -9999px; }
 .availability-result, .confirmation-panel { margin-top: 16px; padding: 14px; border-radius: 10px; font-weight: 600; }
 .availability-result.ok, .confirmation-panel { background: #E7F5EE; color: var(--teal-dark); }
+.confirmation-panel { max-width: 640px; margin: 24px auto 0; padding: 24px; background: var(--white); box-shadow: var(--shadow); }
 .availability-result.busy { background: #FDECEA; color: #C0392B; }
 
 /* Phase 10: field-level messaging, ported from the old Apps Script site's
