@@ -152,5 +152,14 @@ body.lightbox-open #gallery .cylinder { animation-play-state: paused; }
     max-width: none;
     height: 100%;
   }
-  #enquire #enquiryConfirmation { grid-row: 3; }
+  #enquire #enquiryConfirmation { grid-row: 2; }
+}
+
+#enquire #enquiryConfirmation {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  align-self: start;
+  scroll-margin-top: 140px;
+  overflow-wrap: anywhere;
 }
