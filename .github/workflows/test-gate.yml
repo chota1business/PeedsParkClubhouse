@@ -33,6 +33,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_release.py'
           python tests/run_tests.py --forms-only
+          python tests/enquiry-confirmation.py
 
       - name: Upload artifacts on failure
         if: failure()

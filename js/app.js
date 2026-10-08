@@ -218,19 +218,28 @@ function showEnquiryConfirmation(row, payload) {
   form.hidden = true;
 
   wireSendAnotherLink(panel, form);
+  panel.tabIndex = -1;
+  panel.focus({ preventScroll: true });
+  panel.scrollIntoView({ block: "start", behavior: "instant" });
 }
 
 // Shared markup for the enquiry confirmation panel — mirrors the old site's
 // confirmation card (icon, reference, message, a WhatsApp button the
 // customer taps themselves, and a link back to the form).
+function escapeConfirmationText(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[char]);
+}
+
 function confirmationPanelHtml({ heading, reference, message, waLink, anotherText, payload }) {
   let detailsHtml = '';
   if (payload) {
     const details = [];
-    if (payload.facility_id) details.push(`<strong>Facility:</strong> ${payload.facility_id}`);
+    if (payload.facility_id) details.push(`<strong>Facility:</strong> ${escapeConfirmationText(payload.facility_id)}`);
     if (payload.preferred_date) details.push(`<strong>Preferred date:</strong> ${formatDateForDisplay(payload.preferred_date)}`);
-    if (payload.guests) details.push(`<strong>Guests:</strong> ${payload.guests}`);
-    if (payload.message) details.push(`<strong>Message:</strong> ${payload.message}`);
+    if (payload.guests) details.push(`<strong>Guests:</strong> ${escapeConfirmationText(payload.guests)}`);
+    if (payload.message) details.push(`<strong>Message:</strong> ${escapeConfirmationText(payload.message)}`);
 
     if (details.length > 0) {
       detailsHtml = `<div style="text-align:left;background:#f5f5f5;padding:14px;border-radius:8px;margin:16px 0;font-weight:500;font-size:0.95rem;">
@@ -242,13 +251,13 @@ function confirmationPanelHtml({ heading, reference, message, waLink, anotherTex
   return `
     <div style="text-align:center;">
       <div style="font-size:40px;margin-bottom:10px;">✅</div>
-      <h3 style="margin:0 0 8px;">${heading}</h3>
+      <h3 style="margin:0 0 8px;">${escapeConfirmationText(heading)}</h3>
       <p class="muted" style="margin:0 0 6px;">Reference</p>
-      <p style="font-size:1.2rem;font-weight:700;margin:0 0 16px;">${reference}</p>
-      <p style="font-weight:700;margin:0 0 16px;">${message}</p>
+      <p style="font-size:1.2rem;font-weight:700;margin:0 0 16px;">${escapeConfirmationText(reference)}</p>
+      <p style="font-weight:700;margin:0 0 16px;">${escapeConfirmationText(message)}</p>
       ${detailsHtml}
-      <a class="btn btn-primary" href="${waLink}" target="_blank" rel="noopener">💬 Send WhatsApp Message</a>
-      <br><a href="#" data-send-another style="display:inline-block;margin-top:14px;font-weight:600;">${anotherText}</a>
+      <a class="btn btn-primary" href="${escapeConfirmationText(waLink)}" target="_blank" rel="noopener">💬 Send WhatsApp Message</a>
+      <br><a href="#" data-send-another style="display:inline-block;margin-top:14px;font-weight:600;">${escapeConfirmationText(anotherText)}</a>
     </div>`;
 }
 
@@ -268,6 +277,9 @@ function wireSendAnotherLink(panel, form) {
   link.addEventListener("click", (e) => {
     e.preventDefault();
     panel.hidden = true;
-    if (form) form.hidden = false;
+    if (form) {
+      form.hidden = false;
+      form.querySelector("input:not([tabindex=\"-1\"])")?.focus();
+    }
   });
 }
