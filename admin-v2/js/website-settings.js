@@ -31,12 +31,14 @@ function readContacts() {
   const form = document.getElementById('settingsForm');
   draft.phones = [form.elements.phone1.value.trim(),form.elements.phone2.value.trim()];
   draft.emails = [form.elements.email1.value.trim(),form.elements.email2.value.trim()];
+  for (const group of ['halls','pool','badminton']) draft.facilityWhatsapp[group] = form.elements['whatsapp_'+group].value.trim().replace(/^\+/, '');
   draft.whatsapp = form.elements.whatsapp.value.trim().replace(/^\+/, '');
 }
 function renderEditor() {
   const form = document.getElementById('settingsForm');
   ['phone1','phone2'].forEach((key,i) => form.elements[key].value = draft.phones[i]);
   ['email1','email2'].forEach((key,i) => form.elements[key].value = draft.emails[i]);
+  for (const group of ['halls','pool','badminton']) form.elements['whatsapp_'+group].value = draft.facilityWhatsapp[group];
   form.elements.whatsapp.value = draft.whatsapp;
   form.oninput = changed;
   const images = document.getElementById('settingsImages'); images.replaceChildren();
@@ -87,6 +89,7 @@ async function uploadPhoto(file) {
 function renderPreview() {
   const root=document.getElementById('previewContent');root.replaceChildren();
   const contacts=document.createElement('p');contacts.textContent=`Phone: ${preview.phones.join(' / ')} · Email: ${preview.emails.join(' / ')} · WhatsApp: +${preview.whatsapp}`;root.append(contacts);
+  for (const [group,label] of [['halls','Halls and Lawn'],['pool','Swimming Pool'],['badminton','Badminton']]) { const line=document.createElement('p'); line.textContent=label+' WhatsApp: +'+(preview.facilityWhatsapp[group] || preview.whatsapp); root.append(line); }
   const grid=document.createElement('div');grid.className='settings-grid';
   for(const [label,item] of [...Object.entries(SiteContent.slots).map(([key,[label]])=>[label,preview.images[key]]),...preview.gallery.map((item,i)=>['Gallery '+(i+1),item])]){
     const figure=document.createElement('figure');const img=document.createElement('img');img.src=imageUrl(item.src);img.alt=item.alt;const caption=document.createElement('figcaption');caption.textContent=label+' — '+item.alt;figure.append(img,caption);grid.append(figure);

@@ -359,6 +359,7 @@ async function submitEditFeedBooking(e) {
   Object.assign(row, update);
   modal.hidden = true;
   renderFeed();
+  if (newStatus === 'approved' && originalStatus !== 'approved') AdminActions.offerConfirmation(row);
 }
 
 // ---------- Add Enquiry modal ----------
