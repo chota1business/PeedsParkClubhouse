@@ -64,6 +64,25 @@ const AdminActions = (() => {
     el.textContent = message;
   }
 
+  function confirmationMessage(b) {
+    const slots = { morning: 'Morning (8 AM–2 PM)', evening: 'Evening (4 PM–10 PM)', full_day: 'Full Day' };
+    const time = b.slot ? slots[b.slot] || b.slot : (b.start_time || '').slice(0,5)+'–'+(b.end_time || '').slice(0,5);
+    return 'Hi '+b.customer_name+', your booking at PeedsPark is confirmed.\nFacility: '+(labels[b.facility_id] || b.facility_id)+'\nReference: '+(b.booking_code || b.code)+'\nDate: '+(b.booking_date || b.activity_date)+'\nTime: '+time+'\nWe look forward to welcoming you!';
+  }
+  function confirmationLink(b) {
+    let phone = String(b.phone || '').replace(/\D/g, '');
+    if (phone.length === 10) phone = '91'+phone;
+    return /^[1-9]\d{7,14}$/.test(phone) ? 'https://wa.me/'+phone+'?text='+encodeURIComponent(confirmationMessage(b)) : null;
+  }
+  function offerConfirmation(b) {
+    const link = confirmationLink(b);
+    notice(link ? 'Booking confirmed. Review and send using the facility WhatsApp account.' : 'Booking confirmed. Check the customer phone number before sending.');
+    if (!link) return;
+    const button = document.createElement('a'); button.href = link; button.target = '_blank'; button.rel = 'noopener';
+    button.className = 'btn btn-primary'; button.textContent = 'Send confirmation on WhatsApp';
+    document.getElementById('adminActionNotice').append(document.createElement('br'), button);
+    document.getElementById('adminActionNotice').scrollIntoView({ block: 'nearest' });
+  }
   function modal(id, title, fields) {
     const el = document.createElement("div");
     el.id = id;
@@ -121,6 +140,7 @@ const AdminActions = (() => {
       form.closest(".modal-backdrop").hidden = true;
       notice(`Saved booking enquiry ${data.booking_code}.`);
       await config.onSaved();
+      if (payload.mark_approved) offerConfirmation({ ...payload, booking_code: data.booking_code });
     } catch (err) { error(form, err.message || "Couldn't save. Please try again."); }
     finally { button.disabled = false; }
   }
@@ -224,6 +244,6 @@ const AdminActions = (() => {
       finally { button.disabled = false; }
     });
   }
-  return { init, prepareEnquiry, bookingPayload, expenseCardHtml, expenseSummaryHtml,
+  return { confirmationMessage, confirmationLink, offerConfirmation, init, prepareEnquiry, bookingPayload, expenseCardHtml, expenseSummaryHtml,
     editExpense: row => openExpense(row), initExpenses: opts => { config = opts; setupExpense(); } };
 })();

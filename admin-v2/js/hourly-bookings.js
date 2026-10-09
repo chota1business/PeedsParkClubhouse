@@ -458,6 +458,7 @@ async function submitEditBooking(e) {
   Object.assign(booking, update);
   modal.hidden = true;
   renderBookings();
+  if (newStatus === "approved" && originalStatus !== "approved") AdminActions.offerConfirmation(booking);
 }
 
 async function writeAudit(action, table, recordId, details) {

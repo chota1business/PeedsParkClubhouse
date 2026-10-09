@@ -177,6 +177,9 @@ function mockSupabase({ role }) {
     await feed.locator('#enquiryModal').waitFor({ state: 'hidden' });
     const saved = await feed.evaluate(() => savedRequests.find(x => x.name === 'staff_save_booking_enquiry').data.p_data);
     assert.equal(saved.customer_name, 'Updated Guest'); assert.equal(saved.guests, 3); assert.equal(saved.enquiry_id, 'enquiry-1'); assert.equal(saved.amount_paid, 200);
+    const confirmation = feed.locator('#adminActionNotice a');await confirmation.waitFor();
+    assert.ok((await confirmation.getAttribute('href')).startsWith('https://wa.me/919000000001?text='));
+    assert.match(decodeURIComponent(await confirmation.getAttribute('href')),/Updated Guest/);
     await feed.close();
     for (const valid of [true, false]) {
       const reset = await browser.newPage();

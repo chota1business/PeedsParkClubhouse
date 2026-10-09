@@ -21,3 +21,11 @@ Apply the `website_settings` migration, then deploy the updated public pages, sh
 - `node tests/website-settings.cjs`: preview before publish, upload validation, publication/conflict handling, denied non-admin UI, mobile layout, public contacts, gallery/lightbox and network fallback.
 - `tests/website-settings-permissions.sql`: rollback-only database checks for public read access, admin publishing/storage access, audit/version behavior and denied non-admin/inactive writes.
 - Manual after deployment: replace each named photo; verify home, Club House, Pool, Badminton, halls, lawn and Privacy contacts; test tel/mailto/WhatsApp including newly generated booking confirmations; enlarge/reorder gallery photos; inspect mobile and desktop crop; verify reduced-motion gallery; try a second editor to confirm stale publish rejection. Use test content in a staging environment for publish checks.
+
+## Facility WhatsApp routing
+
+Website Settings provides three optional WhatsApp numbers: Halls and Lawn (AC Hall, Non-AC Hall, Party Hall/Lawn), Swimming Pool, and Badminton (both courts). Include the country code. Blank values use the general WhatsApp number. Phone 1 and Phone 2 remain general contact numbers. Preview and publish updates using the existing history/version checks. No database migration is required; group numbers are stored in website_settings.content.facilityWhatsapp.
+
+Facility floating WhatsApp buttons, booking request messages, and enquiries with a selected facility use the matching group number. General enquiries use the general WhatsApp number.
+
+After a successful approval or creation/conversion of an already-confirmed booking, the admin sees Send confirmation on WhatsApp. The prepared customer message contains name, facility, reference, date and slot/time. Indian ten-digit customer numbers are prefixed with 91. The admin reviews and sends in WhatsApp using the facility account; a link cannot select the sender account or prove delivery. There is no automatic sending. Failed approvals do not offer a confirmation.

@@ -16,6 +16,7 @@ window.SiteContent = (() => {
   };
   const defaults = {
     phones: ['+919846718106', '+919946440088'], emails: ['peedspark@gmail.com', 'lsparkclubhouse@gmail.com'], whatsapp: '919846718106',
+    facilityWhatsapp: { halls: '', pool: '', badminton: '' },
     images: Object.fromEntries(Object.entries(slots).map(([key, value]) => [key, { src: value[1], alt: value[0] }])),
     gallery: [['hall2.jpeg','Hall entrance set up for an event'],['lawn1.jpeg','L’s Park party lawn'],['swimmingpool1.jpeg','L’s Park swimming pool'],['badminton.jpeg','Badminton court building'],['warmup.jpeg','Badminton warm-up area'],['baby.jpeg','Baby pool'],['garden1.jpeg','L’s Park garden']].map(([file,alt]) => ({src: 'images/' + file, alt})),
   };
@@ -32,12 +33,17 @@ window.SiteContent = (() => {
     if (!data || !Array.isArray(data.phones) || data.phones.length !== 2 || data.phones.some(x => !/^\+[1-9]\d{7,14}$/.test(x))) throw Error('Enter both phone numbers with country code, for example +919846718106.');
     if (!Array.isArray(data.emails) || data.emails.length !== 2 || data.emails.some(x => !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(x))) throw Error('Enter two valid email addresses.');
     if (!/^[1-9]\d{7,14}$/.test(data.whatsapp)) throw Error('Enter a WhatsApp number including country code.');
+    for (const group of ['halls','pool','badminton']) if (data.facilityWhatsapp?.[group] && !/^[1-9]\d{7,14}$/.test(data.facilityWhatsapp[group])) throw Error('Enter a valid facility WhatsApp number including country code.');
     if (!Array.isArray(data.gallery) || data.gallery.length < 1 || data.gallery.length > 12) throw Error('Use between 1 and 12 gallery photos.');
     for (const key of Object.keys(slots)) if (!data.images?.[key]) throw Error('A website photo is missing.');
     for (const item of [...Object.values(data.images), ...data.gallery]) if (!safeImage(item.src) || typeof item.alt !== 'string' || !item.alt.trim() || item.alt.length > 250) throw Error('Each image needs a valid photo and a description of up to 250 characters.');
     return data;
   }
-  function merge(data) { return { ...structuredClone(defaults), ...data, images: { ...structuredClone(defaults.images), ...data?.images } }; }
+  function merge(data) { return { ...structuredClone(defaults), ...data, facilityWhatsapp: { ...defaults.facilityWhatsapp, ...data?.facilityWhatsapp }, images: { ...structuredClone(defaults.images), ...data?.images } }; }
+  function whatsappFor(facility) {
+    const group = ['ac_hall','non_ac_hall','lawn'].includes(facility) ? 'halls' : facility === 'pool' ? 'pool' : ['badminton_1','badminton_2'].includes(facility) ? 'badminton' : null;
+    return current.facilityWhatsapp?.[group] || current.whatsapp;
+  }
   function phoneText(number) { return number.startsWith('+91') && number.length === 13 ? number.slice(3,8) + ' ' + number.slice(8) : number; }
   function apply(data) {
     current = validate(merge(data));
@@ -52,7 +58,7 @@ window.SiteContent = (() => {
       if (a.dataset.contactLabel === 'number') a.textContent = '📞 ' + phoneText(current.phones[i]);
     });
     document.querySelectorAll('[data-contact-email]').forEach(a => { const value = current.emails[Number(a.dataset.contactEmail)]; a.href = 'mailto:' + value; a.textContent = value; });
-    document.querySelectorAll('a[href*="wa.me/"]').forEach(a => { const url = new URL(a.href); url.pathname = '/' + current.whatsapp; a.href = url.href; });
+    document.querySelectorAll('a[href*="wa.me/"]').forEach(a => { const url = new URL(a.href); url.pathname = '/' + whatsappFor(a.dataset.whatsappFacility || (a.classList.contains('whatsapp-float') ? window.FACILITY_PAGE_CONFIG?.facilities?.[0]?.id : null)); a.href = url.href; });
     const cylinder = document.querySelector('#gallery .cylinder');
     if (cylinder) {
       cylinder.replaceChildren(...current.gallery.map((item, index) => {
@@ -75,5 +81,5 @@ window.SiteContent = (() => {
     const start = () => load().finally(resolve);
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true }); else start();
   });
-  return { slots, defaults, merge, validate, safeImage, apply, ready, get current() { return current; } };
+  return { whatsappFor, slots, defaults, merge, validate, safeImage, apply, ready, get current() { return current; } };
 })();
