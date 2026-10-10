@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const grid = document.querySelector("#gallery .cylinder, .gallery-grid");
   if (!grid) return;
 
-  const figures = Array.from(grid.querySelectorAll("figure, .photo"));
+  let figures = Array.from(grid.querySelectorAll("figure, .photo"));
   const pause = document.getElementById("galleryPause");
   if (pause) {
     pause.addEventListener("click", () => {
@@ -18,9 +18,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       pause.textContent = paused ? "Resume gallery" : "Pause gallery";
     });
   }
-  if (!figures.length) return;
 
-  const photos = figures.map((fig) => {
+  let photos = figures.map((fig) => {
     const img = fig.querySelector("img");
     const caption = fig.querySelector("figcaption");
     return { src: img ? img.src : "", alt: img ? img.alt : "", caption: caption ? caption.textContent : "" };
@@ -66,10 +65,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     overlay.setAttribute("hidden", "");
     document.body.classList.remove("lightbox-open");
     imgEl.src = ""; // stop loading/decoding once hidden
-    figures[currentIndex].focus();
+    figures[currentIndex]?.focus();
   }
 
-  figures.forEach((fig, index) => {
+  function bindPhotos() {
+    figures = Array.from(grid.querySelectorAll('figure, .photo'));
+    photos = figures.map(fig=>{const img=fig.querySelector('img');return {src:img.src,alt:img.alt,caption:fig.querySelector('figcaption')?.textContent || img.alt};});
+    figures.forEach((fig, index) => {
     fig.setAttribute("tabindex", "0");
     fig.setAttribute("role", "button");
     const caption = fig.querySelector("figcaption");
@@ -81,7 +83,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         open(index);
       }
     });
-  });
+    });
+  }
+  bindPhotos();
+  document.addEventListener('galleryupdated',()=>{if(!overlay.hasAttribute('hidden'))close();bindPhotos();});
 
   overlay.querySelector(".lightbox-close").addEventListener("click", close);
   overlay.querySelector(".lightbox-prev").addEventListener("click", () => show(currentIndex - 1));

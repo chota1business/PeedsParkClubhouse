@@ -1,5 +1,7 @@
 // Public website content. Existing HTML remains a fallback if settings cannot load.
 window.SiteContent = (() => {
+  const galleryCategories = { common:'Common', ac_hall:'AC Hall', non_ac_hall:'Non-AC Hall', lawn:'Party Hall / Lawn', pool:'Swimming Pool', badminton:'Badminton' };
+  const galleryLimit = 48;
   const slots = {
     logo: ['Site logo', 'images/peedspark-logo.jpg'],
     home_hero: ['Homepage hero', 'images/lawn1.jpeg'],
@@ -21,7 +23,7 @@ window.SiteContent = (() => {
     images: Object.fromEntries(Object.entries(slots).map(([key, value]) => [key, { src: value[1], alt: value[0] }])),
     gallery: [['hall2.jpeg','Hall entrance set up for an event'],['lawn1.jpeg','L’s Park party lawn'],['swimmingpool1.jpeg','L’s Park swimming pool'],['badminton.jpeg','Badminton court building'],['warmup.jpeg','Badminton warm-up area'],['baby.jpeg','Baby pool'],['garden1.jpeg','L’s Park garden']].map(([file,alt]) => ({src: 'images/' + file, alt})),
   };
-  let current = structuredClone(defaults);
+  let current = merge(defaults);
   function safeImage(src) {
     if (typeof src !== 'string') return false;
     if (/^images\/[a-zA-Z0-9 _.-]+\.(png|jpe?g|webp)$/i.test(src)) return true;
@@ -36,12 +38,36 @@ window.SiteContent = (() => {
     if (!/^[1-9]\d{7,14}$/.test(data.whatsapp)) throw Error('Enter a WhatsApp number including country code.');
     for (const group of ['halls','pool','badminton']) if (data.facilityWhatsapp?.[group] && !/^[1-9]\d{7,14}$/.test(data.facilityWhatsapp[group])) throw Error('Enter a valid facility WhatsApp number including country code.');
     validateAnnouncement(data.announcement);
-    if (!Array.isArray(data.gallery) || data.gallery.length < 1 || data.gallery.length > 12) throw Error('Use between 1 and 12 gallery photos.');
+    if (!Array.isArray(data.gallery) || data.gallery.length < 1 || data.gallery.length > galleryLimit) throw Error(`Use between 1 and ${galleryLimit} gallery photos.`);
+    for(const item of data.gallery) if(!Array.isArray(item.tags) || !item.tags.length || item.tags.some(tag=>!Object.hasOwn(galleryCategories,tag)) || new Set(item.tags).size!==item.tags.length) throw Error('Choose at least one valid category for each gallery photo.');
     for (const key of Object.keys(slots)) if (!data.images?.[key]) throw Error('A website photo is missing.');
     for (const item of [...Object.values(data.images), ...data.gallery]) if (!safeImage(item.src) || typeof item.alt !== 'string' || !item.alt.trim() || item.alt.length > 250) throw Error('Each image needs a valid photo and a description of up to 250 characters.');
     return data;
   }
-  function merge(data) { return { ...structuredClone(defaults), ...data, announcement: { ...defaults.announcement, ...data?.announcement }, facilityWhatsapp: { ...defaults.facilityWhatsapp, ...data?.facilityWhatsapp }, images: { ...structuredClone(defaults.images), ...data?.images } }; }
+  function merge(data) { return { ...structuredClone(defaults), ...data, gallery:(data?.gallery || defaults.gallery).map(item=>({...item,tags:item.tags===undefined ? ['common'] : item.tags})), announcement: { ...defaults.announcement, ...data?.announcement }, facilityWhatsapp: { ...defaults.facilityWhatsapp, ...data?.facilityWhatsapp }, images: { ...structuredClone(defaults.images), ...data?.images } }; }
+  function renderGallery() {
+    const root=document.getElementById('gallery'), cylinder=root?.querySelector('.cylinder');if(!cylinder)return;
+    root.querySelector('.gallery-controls')?.remove();
+    const controls=document.createElement('div');controls.className='gallery-controls container';
+    const label=document.createElement('label');label.textContent='Show photos: ';
+    const select=document.createElement('select');select.setAttribute('aria-label','Gallery category');
+    for(const [value,text] of [['all','All photos'],...Object.entries(galleryCategories)]){const option=document.createElement('option');option.value=value;option.textContent=text;select.append(option);}label.append(select);
+    const previous=document.createElement('button');previous.type='button';previous.textContent='Previous set';
+    const next=document.createElement('button');next.type='button';next.textContent='Next set';
+    const status=document.createElement('span');status.setAttribute('role','status');controls.append(label,previous,status,next);root.querySelector('.gallery-wrap').before(controls);
+    let page=0;
+    function draw(){
+      const photos=current.gallery.filter(item=>select.value==='all'||item.tags.includes(select.value));
+      const pages=Math.ceil(photos.length/8);page=Math.min(page,Math.max(0,pages-1));
+      const visible=photos.slice(page*8,page*8+8);
+      cylinder.replaceChildren(...visible.map((item,index)=>{const button=document.createElement('button');button.type='button';button.className='photo';button.setAttribute('aria-label','View larger photo: '+item.alt);button.style.transform=`rotateY(${index*360/visible.length}deg) translateZ(290px)`;const img=document.createElement('img');img.src=item.src;img.alt=item.alt;img.loading='lazy';button.append(img);return button;}));
+      cylinder.classList.toggle('gallery-single',visible.length===1);
+      previous.disabled=page===0;next.disabled=page>=pages-1;previous.hidden=next.hidden=pages<=1;
+      status.textContent=photos.length ? `${page*8+1}–${page*8+visible.length} of ${photos.length} photos` : 'No photos in this category yet.';
+      document.dispatchEvent(new Event('galleryupdated'));
+    }
+    select.onchange=()=>{page=0;draw();};previous.onclick=()=>{page--;draw();};next.onclick=()=>{page++;draw();};draw();
+  }
   function safeLink(value) {
     if (typeof value !== 'string' || /[\\\x00-\x20]/.test(value)) return false;
     if (/^\/(?!\/)/.test(value) || /^[a-z][a-z0-9-]*\.html(?:[?#].*)?$/i.test(value)) return true;
@@ -117,14 +143,7 @@ window.SiteContent = (() => {
     document.querySelectorAll('[data-contact-email]').forEach(a => { const value = current.emails[Number(a.dataset.contactEmail)]; a.href = 'mailto:' + value; a.textContent = value; });
     document.querySelectorAll('a[href*="wa.me/"]').forEach(a => { const url = new URL(a.href); url.pathname = '/' + whatsappFor(a.dataset.whatsappFacility || (a.classList.contains('whatsapp-float') ? window.FACILITY_PAGE_CONFIG?.facilities?.[0]?.id : null)); a.href = url.href; });
     renderAnnouncement();
-    const cylinder = document.querySelector('#gallery .cylinder');
-    if (cylinder) {
-      cylinder.replaceChildren(...current.gallery.map((item, index) => {
-        const button = document.createElement('button'); button.type = 'button'; button.className = 'photo';
-        button.style.transform = `rotateY(${index * 360 / current.gallery.length}deg) translateZ(290px)`;
-        const img = document.createElement('img'); img.src = item.src; img.alt = item.alt; img.loading = 'lazy'; button.append(img); return button;
-      }));
-    }
+    renderGallery();
   }
   async function load() {
     try {
@@ -136,8 +155,8 @@ window.SiteContent = (() => {
     } catch (error) { console.warn('Using existing website content:', error.message); }
   }
   const ready = location.pathname.includes('/admin-v2/') ? Promise.resolve() : new Promise(resolve => {
-    const start = () => load().finally(resolve);
+    const start = () => {renderGallery();load().finally(resolve);};
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true }); else start();
   });
-  return { announcementActive, announcementElement, safeLink, renderAnnouncement, whatsappFor, slots, defaults, merge, validate, safeImage, apply, ready, get current() { return current; } };
+  return { galleryCategories, galleryLimit, announcementActive, announcementElement, safeLink, renderAnnouncement, whatsappFor, slots, defaults, merge, validate, safeImage, apply, ready, get current() { return current; } };
 })();

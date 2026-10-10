@@ -72,6 +72,11 @@ function imageEditor(item,label,index) {
   file.addEventListener('change',async()=>{ if (!file.files[0]) return; try { const src=await uploadPhoto(file.files[0]); item.src=src; img.src=src; changed(); settingsNote('Photo ready. Preview and publish to put it on the website.'); } catch(error) { settingsNote(error.message); } finally { file.value=''; } });
   uploadLabel.append(file); card.append(title,img,caption,uploadLabel);
   if (index !== null) {
+    const tags=document.createElement('fieldset');const legend=document.createElement('legend');legend.textContent='Photo categories (choose one or more)';tags.append(legend);
+    for(const [value,text] of Object.entries(SiteContent.galleryCategories)){
+      const label=document.createElement('label');const check=document.createElement('input');check.type='checkbox';check.checked=item.tags.includes(value);label.append(check,document.createTextNode(text));
+      check.onchange=()=>{item.tags=check.checked ? [...item.tags,value] : item.tags.filter(tag=>tag!==value);changed();};tags.append(label);
+    }card.append(tags);
     const controls=document.createElement('div'); controls.className='settings-actions';
     for (const [text,offset] of [['Move up',-1],['Move down',1]]) {
       const button=document.createElement('button'); button.type='button'; button.textContent=text; button.className='btn btn-outline-dark btn-sm'; button.disabled=index+offset<0 || index+offset>=draft.gallery.length;
@@ -84,8 +89,8 @@ function imageEditor(item,label,index) {
 }
 function renderGallery() {
   document.getElementById('settingsGallery').replaceChildren(...draft.gallery.map((item,i)=>imageEditor(item,`Gallery photo ${i+1}`,i)));
-  const add=document.getElementById('addGalleryPhoto'); add.disabled=draft.gallery.length>=12;
-  add.onchange=async()=>{ if(!add.files[0])return; try { const src=await uploadPhoto(add.files[0]);draft.gallery.push({src,alt:'New gallery photo'});changed();renderGallery();settingsNote('Photo added. Give it a description before publishing.'); }catch(error){settingsNote(error.message);}finally{add.value='';} };
+  const add=document.getElementById('addGalleryPhoto'); add.disabled=draft.gallery.length>=SiteContent.galleryLimit;
+  add.onchange=async()=>{ if(!add.files[0])return; try { const src=await uploadPhoto(add.files[0]);draft.gallery.push({src,alt:'New gallery photo',tags:['common']});changed();renderGallery();settingsNote('Photo added. Give it a description and categories before publishing.'); }catch(error){settingsNote(error.message);}finally{add.value='';} };
 }
 async function uploadPhoto(file) {
   if(busy)throw Error('Wait for the current upload to finish.');
@@ -109,7 +114,7 @@ function renderPreview() {
   if(a.title || a.image)root.append(SiteContent.announcementElement(a,true));
   const grid=document.createElement('div');grid.className='settings-grid';
   for(const [label,item] of [...Object.entries(SiteContent.slots).map(([key,[label]])=>[label,preview.images[key]]),...preview.gallery.map((item,i)=>['Gallery '+(i+1),item])]){
-    const figure=document.createElement('figure');const img=document.createElement('img');img.src=imageUrl(item.src);img.alt=item.alt;const caption=document.createElement('figcaption');caption.textContent=label+' — '+item.alt;figure.append(img,caption);grid.append(figure);
+    const figure=document.createElement('figure');const img=document.createElement('img');img.src=imageUrl(item.src);img.alt=item.alt;const caption=document.createElement('figcaption');caption.textContent=label+' — '+item.alt+(item.tags ? ' · '+item.tags.map(tag=>SiteContent.galleryCategories[tag]).join(', ') : '');figure.append(img,caption);grid.append(figure);
   }
   root.append(grid);document.getElementById('settingsPreview').hidden=false;document.getElementById('settingsPreview').scrollIntoView({block:'start'});
 }

@@ -45,7 +45,7 @@
 <div id="announcementImageEditor"></div><label>Optional banner image<input id="announcementImageUpload" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="announcementImageGuide"></label>
 <p id="announcementImageGuide"><strong>Banner image guide:</strong> JPG, PNG or WebP. Maximum file size: 5 MB; ideally under 1 MB for faster loading. Recommended dimensions for a slim image-only banner: <strong>1080 × 220 pixels</strong> (wide landscape). The full image fills the available width without cropping on desktop, narrower desktop windows and mobile. Its height adjusts automatically to preserve the original proportions. Keep all text inside the image with clear margins and make dates and times large enough to read on phones. Other dimensions are accepted; taller images create taller banners.</p>
 <h3>Website photos and banners</h3><p>Hero photos fill their frames and may be cropped. Banners keep their original proportions. Contact text embedded inside an uploaded image must be replaced as part of that image.</p><div id="settingsImages" class="settings-grid"></div>
-<h3>Gallery</h3><p>Arrange up to 12 photos in the order visitors should see them.</p><div id="settingsGallery" class="settings-grid"></div>
+<h3>Gallery</h3><p>Arrange up to 48 photos. Tag each photo with one or more facilities or Common. Existing photos start under Common. Visitors can filter by category; the cylindrical reel shows up to eight photos per set with Previous/Next controls.</p><div id="settingsGallery" class="settings-grid"></div>
 <label>Add gallery photo<input id="addGalleryPhoto" type="file" accept="image/jpeg,image/png,image/webp"></label>
 <p><button class="btn btn-primary" type="submit">Preview changes</button></p></fieldset></form>
 <section id="settingsPreview" hidden><h3>Review before publishing</h3><p>These are the contact details and images that will replace the current website content.</p><div id="previewContent"></div><div class="settings-actions"><button type="button" id="publishSettings" class="btn btn-primary">Publish changes</button><button type="button" id="cancelPreview" class="btn btn-outline-dark">Back to editing</button></div></section>
@@ -63,6 +63,6 @@
 <script src="../js/supabase-client.js?v=20260904"></script>
 <script src="js/admin-auth.js?v=20260907-admin2"></script>
 <script src="../js/site-content.js?v=20261010-banner-image"></script>
-<script src="js/website-settings.js?v=20261010-banner-image"></script>
+<script src="js/website-settings.js?v=20261010-gallery-tags"></script>
 </body>
 </html>
