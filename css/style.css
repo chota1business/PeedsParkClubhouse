@@ -460,6 +460,15 @@ footer{background:#315f88;color:#ffffff;padding:25px 0}
 .footer-link:hover{opacity:1}
 .contact-emails{margin:12px 0 0;line-height:1.8;overflow-wrap:anywhere}
 .contact-emails a{color:inherit;text-decoration:underline}
+.site-footer .footer-contact-layout{display:grid;grid-template-columns:auto auto auto;align-items:start;gap:16px 30px;line-height:1.8}
+.footer-contact-layout .contact-emails{margin:0}
+.whatsapp-icon{width:24px;height:24px;flex-shrink:0}
+.whatsapp-hero-link{display:inline-flex;align-items:center;justify-content:center;min-width:48px;min-height:48px;align-self:center}
+.whatsapp-hero-link .whatsapp-icon{width:48px;height:48px}
+.whatsapp-hero-link:hover{transform:scale(1.06)}
+.whatsapp-hero-link:focus-visible{outline:3px solid #fff;outline-offset:4px;border-radius:8px}
+[data-facility-whatsapp],[data-whatsapp-number]{display:inline-flex;align-items:center;gap:8px}
+@media(max-width:760px){.site-footer .footer-contact-layout{grid-template-columns:1fr;gap:16px}}
 
 /* WhatsApp floating button */
 .whatsapp-float {
@@ -598,3 +607,4 @@ footer{background:#315f88;color:#ffffff;padding:25px 0}
 .site-announcement{background:#e8f5ef;border-bottom:1px solid #b8d9ca;padding:22px 0}.announcement-inner{display:flex;align-items:center;gap:24px;min-width:0}.announcement-inner>img{width:240px;max-width:35%;max-height:180px;object-fit:contain;border-radius:12px}.announcement-text{min-width:0;flex:1;overflow-wrap:anywhere}.announcement-tag{font-size:.75rem;font-weight:700;letter-spacing:.12em;color:#376654}.announcement-text h2{margin:6px 0;font-size:clamp(1.25rem,3vw,1.8rem)}.announcement-text p{margin:8px 0 14px;white-space:pre-line}.announcement-text p:empty{display:none}@media(max-width:600px){.announcement-inner{flex-direction:column;align-items:stretch;gap:12px}.announcement-inner>img{width:100%;max-width:100%;max-height:220px}}
 
 .announcement-image-content{width:100%;min-width:0}.announcement-image-content>img{display:block;width:100%;height:auto;max-height:none;object-fit:contain;margin-top:12px;border-radius:12px}
+@media(min-width:601px){.announcement-image-content>img{width:auto;max-width:100%;max-height:220px;margin-left:auto;margin-right:auto}}

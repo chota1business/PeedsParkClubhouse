@@ -37,10 +37,20 @@ function mock(role) {
   for(const file of ['club-house.html','pool.html','badminton.html','ac-hall.html','non-ac-hall.html','lawn.html','privacy-policy.html']){await publicPage.goto(base+'/'+file);await publicPage.evaluate(()=>SiteContent.ready);assert.equal(await publicPage.locator('[data-contact-email="0"]').first().innerText(),'office@example.com');}
   for (const [file,id,number] of [['ac-hall.html','ac_hall','919000000011'],['non-ac-hall.html','non_ac_hall','919000000011'],['lawn.html','lawn','919000000011'],['pool.html','pool','919000000022'],['badminton.html','badminton_2','919000000033']]) {
     await publicPage.goto(base+'/'+file);await publicPage.evaluate(()=>SiteContent.ready);
-    assert.equal(await publicPage.locator('.whatsapp-float').getAttribute('href'),'https://wa.me/'+number);
+    assert.equal(await publicPage.locator('.whatsapp-float').count(),0);
+    assert.equal(await publicPage.locator('.hero-actions [data-facility-whatsapp]').getAttribute('href'),'https://wa.me/'+number);
+    assert.equal(await publicPage.locator('.hero-actions [data-facility-whatsapp]').innerText(),'');
+    assert.ok((await publicPage.locator('.contact-mini [data-facility-whatsapp]').innerText()).trim().length>0);
     assert.equal(await publicPage.evaluate(id=>SiteContent.whatsappFor(id),id),number);
-    assert.equal(await publicPage.locator('[data-facility-whatsapp]').getAttribute('href'),'https://wa.me/'+number);
-    assert.match(await publicPage.locator('[data-facility-whatsapp]').innerText(),/WhatsApp:/);
+    for(const contact of await publicPage.locator('[data-facility-whatsapp]').all()){
+      assert.equal(await contact.getAttribute('href'),'https://wa.me/'+number);
+      assert.equal(await contact.locator('img').getAttribute('src'),'images/whatsapp.svg');
+      assert.doesNotMatch(await contact.innerText(),/WhatsApp:|💬/);
+      assert.ok((await contact.getAttribute('aria-label')).startsWith('WhatsApp '));
+    }
+    assert.equal(await publicPage.locator('.footer-contact-layout>div').count(),3);
+    assert.equal(await publicPage.locator('.footer-contact-layout>div').nth(1).locator('.footer-link').count(),1);
+    assert.equal(await publicPage.locator('.footer-contact-layout>div').nth(2).locator('[data-contact-email]').count(),2);
     await publicPage.evaluate(id=>showBookingConfirmation('TEST-123',{facility:id,facilityLabel:'Test facility',date:'2026-10-20',dateLabel:'20 October',humanLabel:'Morning',slot:'morning'}),id);
     assert.ok((await publicPage.locator('#bookingConfirmation a.btn-primary').getAttribute('href')).startsWith('https://wa.me/'+number+'?text='));
   }
@@ -54,6 +64,17 @@ function mock(role) {
   assert.equal(await publicPage.evaluate(()=>SiteContent.announcementActive({enabled:true,end:'2026-10-09'},'2026-10-10')),false);
   await publicPage.evaluate(()=>SiteContent.apply({...SiteContent.current,announcement:{...SiteContent.current.announcement,enabled:true,imageOnly:true,title:'',scope:'all',image:{src:'images/lawn1.jpeg',alt:'Event poster'}}}));
   assert.equal(await publicPage.locator('#siteAnnouncement img').getAttribute('alt'),'Event poster');assert.equal(await publicPage.locator('#siteAnnouncement h2').count(),0);assert.equal(await publicPage.locator('#siteAnnouncement a').count(),0);
+  const bannerImage=publicPage.locator('#siteAnnouncement img');
+  await bannerImage.evaluate(img=>img.decode());
+  assert.equal(await bannerImage.evaluate(img=>getComputedStyle(img).maxHeight),'none');
+  for(const width of [768,1440]){
+    await publicPage.setViewportSize({width,height:900});
+    const size=await bannerImage.evaluate(img=>({width:img.clientWidth,height:img.clientHeight,ratio:img.naturalWidth/img.naturalHeight}));
+    assert.ok(size.height<=220);assert.ok(Math.abs(size.width/size.height-size.ratio)<0.02);
+    assert.ok(await publicPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  }
+  await publicPage.setViewportSize({width:390,height:844});
+  assert.equal(await bannerImage.evaluate(img=>getComputedStyle(img).maxHeight),'none');
   assert.equal(await publicPage.evaluate(()=>{try{SiteContent.validate({...SiteContent.current,announcement:{...SiteContent.current.announcement,image:null}});return false;}catch{return true;}}),true);
   await publicPage.evaluate(()=>SiteContent.apply({...SiteContent.current,announcement:{...SiteContent.current.announcement,imageOnly:false,enabled:false}}));
   assert.equal(await publicPage.evaluate(()=>SiteContent.safeLink('javascript:alert(1)')),false);

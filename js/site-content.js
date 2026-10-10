@@ -105,7 +105,15 @@ window.SiteContent = (() => {
       const i = Number(a.dataset.contactPhone); a.href = 'tel:' + current.phones[i];
       if (a.dataset.contactLabel === 'number') a.textContent = '📞 ' + phoneText(current.phones[i]);
     });
-    document.querySelectorAll('[data-facility-whatsapp]').forEach(a=>{const number=whatsappFor(a.dataset.facilityWhatsapp);a.href='https://wa.me/'+number;a.textContent='💬 WhatsApp: '+phoneText('+'+number);});
+    document.querySelectorAll('[data-facility-whatsapp], [data-whatsapp-number]').forEach(a=>{
+      const number=whatsappFor(a.dataset.facilityWhatsapp || a.dataset.whatsappFacility);
+      a.href='https://wa.me/'+number;
+      a.setAttribute('aria-label','WhatsApp '+phoneText('+'+number));
+      const icon=document.createElement('img');icon.src='images/whatsapp.svg';icon.alt='';icon.className='whatsapp-icon';
+      const label=document.createElement('span');label.textContent=phoneText('+'+number);
+      if(a.hasAttribute('data-whatsapp-icon-only')) a.replaceChildren(icon);
+      else a.replaceChildren(icon,label);
+    });
     document.querySelectorAll('[data-contact-email]').forEach(a => { const value = current.emails[Number(a.dataset.contactEmail)]; a.href = 'mailto:' + value; a.textContent = value; });
     document.querySelectorAll('a[href*="wa.me/"]').forEach(a => { const url = new URL(a.href); url.pathname = '/' + whatsappFor(a.dataset.whatsappFacility || (a.classList.contains('whatsapp-float') ? window.FACILITY_PAGE_CONFIG?.facilities?.[0]?.id : null)); a.href = url.href; });
     renderAnnouncement();
