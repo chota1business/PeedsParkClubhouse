@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Website Settings — Peeds Park Admin</title>
-<link rel="stylesheet" href="../css/style.css?v=20260904-6">
+<link rel="stylesheet" href="../css/style.css?v=20261010-announcements">
 <link rel="stylesheet" href="css/admin.css">
 <link rel="stylesheet" href="css/manager-feed.css?v=20260907-admin2">
-<link rel="stylesheet" href="css/website-settings.css?v=20260908">
+<link rel="stylesheet" href="css/website-settings.css?v=20261010-announcements">
 </head>
 <body class="admin-body">
 
@@ -35,6 +35,14 @@
 <label>Email 1<input name="email1" type="email" required></label><label>Email 2<input name="email2" type="email" required></label>
 <label>WhatsApp number (with country code)<input name="whatsapp" type="tel" required></label></div>
 <h3>Facility WhatsApp numbers</h3><p>Include country code. Leave blank to use the general WhatsApp number.</p><div class="settings-grid"><label>AC / Non-AC / Party Hall and Lawn<input name="whatsapp_halls" type="tel"></label><label>Swimming Pool<input name="whatsapp_pool" type="tel"></label><label>Badminton (both courts)<input name="whatsapp_badminton" type="tel"></label></div><h3>Website photos and banners</h3><p>Hero photos fill their frames and may be cropped. Banners keep their original proportions. Contact text embedded inside an uploaded image must be replaced as part of that image.</p><div id="settingsImages" class="settings-grid"></div>
+<h3>Announcements &amp; Events</h3><p>Shown below the navigation. Dates follow India time and include the whole end date. Leave dates blank to show until you hide it.</p><div class="settings-grid">
+<label><input name="announcement_enabled" type="checkbox"> Show announcement</label>
+<label>Show on<select name="announcement_scope"><option value="home">Homepage only</option><option value="all">All public pages</option></select></label>
+<label>Title<input name="announcement_title" maxlength="120"></label>
+<label>Message<textarea name="announcement_message" maxlength="800" rows="3"></textarea></label>
+<label>Start date<input name="announcement_start" type="date"></label><label>End date<input name="announcement_end" type="date"></label>
+<label>Button label (optional)<input name="announcement_buttonLabel" maxlength="60"></label><label>Button link (optional)<input name="announcement_buttonUrl" maxlength="2048" placeholder="pool.html or https://wa.me/..."></label></div>
+<div id="announcementImageEditor"></div><label>Optional banner image<input id="announcementImageUpload" type="file" accept="image/jpeg,image/png,image/webp"></label>
 <h3>Gallery</h3><p>Arrange up to 12 photos in the order visitors should see them.</p><div id="settingsGallery" class="settings-grid"></div>
 <label>Add gallery photo<input id="addGalleryPhoto" type="file" accept="image/jpeg,image/png,image/webp"></label>
 <p><button class="btn btn-primary" type="submit">Preview changes</button></p></fieldset></form>
@@ -52,7 +60,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../js/supabase-client.js?v=20260904"></script>
 <script src="js/admin-auth.js?v=20260907-admin2"></script>
-<script src="../js/site-content.js?v=20261009-whatsapp"></script>
-<script src="js/website-settings.js?v=20261009-whatsapp"></script>
+<script src="../js/site-content.js?v=20261010-announcements"></script>
+<script src="js/website-settings.js?v=20261010-announcements"></script>
 </body>
 </html>

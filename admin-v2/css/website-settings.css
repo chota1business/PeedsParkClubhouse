@@ -9,3 +9,5 @@
 #previewContent p { overflow-wrap:anywhere; }
 #settingsNote { padding:14px; background:#d6ecec; border-radius:8px; }
 #settingsHistory { overflow-wrap:anywhere; }
+
+#settingsEditor textarea,#settingsEditor select{width:100%;max-width:100%} #settingsEditor input[type=checkbox]{width:auto}

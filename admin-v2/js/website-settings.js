@@ -32,6 +32,8 @@ function readContacts() {
   draft.phones = [form.elements.phone1.value.trim(),form.elements.phone2.value.trim()];
   draft.emails = [form.elements.email1.value.trim(),form.elements.email2.value.trim()];
   for (const group of ['halls','pool','badminton']) draft.facilityWhatsapp[group] = form.elements['whatsapp_'+group].value.trim().replace(/^\+/, '');
+  for (const key of ['title','message','scope','start','end','buttonLabel','buttonUrl']) draft.announcement[key] = form.elements['announcement_'+key].value.trim();
+  draft.announcement.enabled = form.elements.announcement_enabled.checked;
   draft.whatsapp = form.elements.whatsapp.value.trim().replace(/^\+/, '');
 }
 function renderEditor() {
@@ -39,11 +41,21 @@ function renderEditor() {
   ['phone1','phone2'].forEach((key,i) => form.elements[key].value = draft.phones[i]);
   ['email1','email2'].forEach((key,i) => form.elements[key].value = draft.emails[i]);
   for (const group of ['halls','pool','badminton']) form.elements['whatsapp_'+group].value = draft.facilityWhatsapp[group];
+  for (const key of ['title','message','scope','start','end','buttonLabel','buttonUrl']) form.elements['announcement_'+key].value = draft.announcement[key];
+  form.elements.announcement_enabled.checked = draft.announcement.enabled;
+  renderAnnouncementImage();
+  document.getElementById('announcementImageUpload').onchange=async event=>{const input=event.target;if(!input.files[0])return;try{const src=await uploadPhoto(input.files[0]);draft.announcement.image={src,alt:draft.announcement.title || 'Event announcement'};changed();renderAnnouncementImage();settingsNote('Banner image ready. Preview and publish to show it.');}catch(error){settingsNote(error.message);}finally{input.value='';}};
   form.elements.whatsapp.value = draft.whatsapp;
   form.oninput = changed;
   const images = document.getElementById('settingsImages'); images.replaceChildren();
   for (const [key,[label]] of Object.entries(SiteContent.slots)) images.append(imageEditor(draft.images[key],label, null));
   renderGallery();
+}
+function renderAnnouncementImage() {
+  const root=document.getElementById('announcementImageEditor');root.replaceChildren();
+  if(!draft.announcement.image)return;
+  const card=imageEditor(draft.announcement.image,'Announcement image',null);
+  const button=document.createElement('button');button.type='button';button.textContent='Remove banner image';button.className='btn btn-outline-dark btn-sm';button.onclick=()=>{draft.announcement.image=null;changed();renderAnnouncementImage();};card.append(button);root.append(card);
 }
 function imageUrl(src) { return src.startsWith('images/') ? '../' + src : src; }
 function imageEditor(item,label,index) {
@@ -90,6 +102,9 @@ function renderPreview() {
   const root=document.getElementById('previewContent');root.replaceChildren();
   const contacts=document.createElement('p');contacts.textContent=`Phone: ${preview.phones.join(' / ')} · Email: ${preview.emails.join(' / ')} · WhatsApp: +${preview.whatsapp}`;root.append(contacts);
   for (const [group,label] of [['halls','Halls and Lawn'],['pool','Swimming Pool'],['badminton','Badminton']]) { const line=document.createElement('p'); line.textContent=label+' WhatsApp: +'+(preview.facilityWhatsapp[group] || preview.whatsapp); root.append(line); }
+  const state=document.createElement('p'); const a=preview.announcement;
+  state.textContent='Announcement: '+(!a.enabled ? 'Hidden' : SiteContent.announcementActive(a) ? 'Visible today' : a.start && a.start > new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'}) ? 'Scheduled' : 'Expired')+' · '+(a.scope==='all' ? 'All public pages' : 'Homepage only')+' · '+(a.start || 'No start date')+' to '+(a.end || 'No end date');root.append(state);
+  if(a.title)root.append(SiteContent.announcementElement(a,true));
   const grid=document.createElement('div');grid.className='settings-grid';
   for(const [label,item] of [...Object.entries(SiteContent.slots).map(([key,[label]])=>[label,preview.images[key]]),...preview.gallery.map((item,i)=>['Gallery '+(i+1),item])]){
     const figure=document.createElement('figure');const img=document.createElement('img');img.src=imageUrl(item.src);img.alt=item.alt;const caption=document.createElement('figcaption');caption.textContent=label+' — '+item.alt;figure.append(img,caption);grid.append(figure);
