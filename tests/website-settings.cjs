@@ -67,10 +67,10 @@ function mock(role) {
   const bannerImage=publicPage.locator('#siteAnnouncement img');
   await bannerImage.evaluate(img=>img.decode());
   assert.equal(await bannerImage.evaluate(img=>getComputedStyle(img).maxHeight),'none');
-  for(const width of [768,1440]){
+  for(const width of [601,768,1024,1440]){
     await publicPage.setViewportSize({width,height:900});
-    const size=await bannerImage.evaluate(img=>({width:img.clientWidth,height:img.clientHeight,parentWidth:img.parentElement.clientWidth,fit:getComputedStyle(img).objectFit}));
-    assert.equal(size.height,220);assert.equal(size.width,size.parentWidth);assert.equal(size.fit,'cover');
+    const size=await bannerImage.evaluate(img=>({width:img.clientWidth,height:img.clientHeight,parentWidth:img.parentElement.clientWidth,ratio:img.naturalWidth/img.naturalHeight,fit:getComputedStyle(img).objectFit,maxHeight:getComputedStyle(img).maxHeight}));
+    assert.equal(size.width,size.parentWidth);assert.ok(Math.abs(size.width/size.height-size.ratio)<0.02);assert.equal(size.fit,'contain');assert.equal(size.maxHeight,'none');
     assert.ok(await publicPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   }
   await publicPage.setViewportSize({width:390,height:844});
