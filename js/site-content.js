@@ -16,7 +16,7 @@ window.SiteContent = (() => {
   };
   const defaults = {
     phones: ['+919846718106', '+919946440088'], emails: ['peedspark@gmail.com', 'lsparkclubhouse@gmail.com'], whatsapp: '919846718106',
-    announcement: { enabled:false, title:'', message:'', scope:'home', start:'', end:'', buttonLabel:'', buttonUrl:'', image:null },
+    announcement: { enabled:false, imageOnly:false, title:'', message:'', scope:'home', start:'', end:'', buttonLabel:'', buttonUrl:'', image:null },
     facilityWhatsapp: { halls: '', pool: '', badminton: '' },
     images: Object.fromEntries(Object.entries(slots).map(([key, value]) => [key, { src: value[1], alt: value[0] }])),
     gallery: [['hall2.jpeg','Hall entrance set up for an event'],['lawn1.jpeg','L’s Park party lawn'],['swimmingpool1.jpeg','L’s Park swimming pool'],['badminton.jpeg','Badminton court building'],['warmup.jpeg','Badminton warm-up area'],['baby.jpeg','Baby pool'],['garden1.jpeg','L’s Park garden']].map(([file,alt]) => ({src: 'images/' + file, alt})),
@@ -51,7 +51,9 @@ window.SiteContent = (() => {
     if (!a) return;
     if (typeof a.enabled !== 'boolean' || !['home','all'].includes(a.scope)) throw Error('Choose where to show the announcement.');
     for (const [key,max] of [['title',120],['message',800],['buttonLabel',60],['buttonUrl',2048]]) if (typeof a[key] !== 'string' || a[key].length > max) throw Error('Announcement text is too long or invalid.');
-    if (a.enabled && !a.title.trim()) throw Error('Enter an announcement title before showing it.');
+    if (typeof a.imageOnly !== 'boolean') throw Error('Choose a valid banner display mode.');
+    if (a.enabled && a.imageOnly && !a.image) throw Error('Upload an image for the image-only banner.');
+    if (a.enabled && !a.imageOnly && !a.title.trim()) throw Error('Enter an announcement title before showing it.');
     for (const key of ['start','end']) if (a[key] && (!/^\d{4}-\d{2}-\d{2}$/.test(a[key]) || !Number.isFinite(Date.parse(a[key])) || new Date(a[key]).toISOString().slice(0,10) !== a[key])) throw Error('Enter valid announcement dates.');
     if (a.start && a.end && a.end < a.start) throw Error('Announcement end date must be on or after the start date.');
     if (!!a.buttonLabel.trim() !== !!a.buttonUrl.trim() || (a.buttonUrl && !safeLink(a.buttonUrl))) throw Error('Enter both a button label and a safe HTTPS or website link.');
@@ -63,6 +65,13 @@ window.SiteContent = (() => {
   function announcementElement(a, isPreview = false) {
     const section=document.createElement('section'); section.className='site-announcement'; section.setAttribute('aria-label','Announcements and events');
     const inner=document.createElement('div'); inner.className='container announcement-inner';
+    if(a.imageOnly) {
+      section.classList.add('announcement-image-only');
+      const content=document.createElement('div');content.className='announcement-image-content';
+      const tag=document.createElement('span');tag.className='announcement-tag';tag.textContent='WHAT’S HAPPENING';content.append(tag);
+      if(a.image) { const img=document.createElement('img');img.src=isPreview && a.image.src.startsWith('images/') ? '../'+a.image.src : a.image.src;img.alt=a.image.alt;content.append(img); }
+      inner.append(content);section.append(inner);return section;
+    }
     if(a.image) { const img=document.createElement('img'); img.src=isPreview && a.image.src.startsWith('images/') ? '../'+a.image.src : a.image.src; img.alt=a.image.alt; inner.append(img); }
     const text=document.createElement('div');text.className='announcement-text';
     const tag=document.createElement('span');tag.className='announcement-tag';tag.textContent='WHAT’S HAPPENING';
@@ -96,6 +105,7 @@ window.SiteContent = (() => {
       const i = Number(a.dataset.contactPhone); a.href = 'tel:' + current.phones[i];
       if (a.dataset.contactLabel === 'number') a.textContent = '📞 ' + phoneText(current.phones[i]);
     });
+    document.querySelectorAll('[data-facility-whatsapp]').forEach(a=>{const number=whatsappFor(a.dataset.facilityWhatsapp);a.href='https://wa.me/'+number;a.textContent='💬 WhatsApp: '+phoneText('+'+number);});
     document.querySelectorAll('[data-contact-email]').forEach(a => { const value = current.emails[Number(a.dataset.contactEmail)]; a.href = 'mailto:' + value; a.textContent = value; });
     document.querySelectorAll('a[href*="wa.me/"]').forEach(a => { const url = new URL(a.href); url.pathname = '/' + whatsappFor(a.dataset.whatsappFacility || (a.classList.contains('whatsapp-float') ? window.FACILITY_PAGE_CONFIG?.facilities?.[0]?.id : null)); a.href = url.href; });
     renderAnnouncement();

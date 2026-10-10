@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Website Settings — Peeds Park Admin</title>
-<link rel="stylesheet" href="../css/style.css?v=20261010-announcements">
+<link rel="stylesheet" href="../css/style.css?v=20261010-banner-image">
 <link rel="stylesheet" href="css/admin.css">
 <link rel="stylesheet" href="css/manager-feed.css?v=20260907-admin2">
 <link rel="stylesheet" href="css/website-settings.css?v=20261010-announcements">
@@ -38,6 +38,7 @@
 <h3>Announcements &amp; Events</h3><p>Shown below the navigation. Dates follow India time and include the whole end date. Leave dates blank to show until you hide it.</p><div class="settings-grid">
 <label><input name="announcement_enabled" type="checkbox"> Show announcement</label>
 <label>Show on<select name="announcement_scope"><option value="home">Homepage only</option><option value="all">All public pages</option></select></label>
+<label><input name="announcement_imageOnly" type="checkbox"> Image only under What’s Happening</label>
 <label>Title<input name="announcement_title" maxlength="120"></label>
 <label>Message<textarea name="announcement_message" maxlength="800" rows="3"></textarea></label>
 <label>Start date<input name="announcement_start" type="date"></label><label>End date<input name="announcement_end" type="date"></label>
@@ -60,7 +61,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../js/supabase-client.js?v=20260904"></script>
 <script src="js/admin-auth.js?v=20260907-admin2"></script>
-<script src="../js/site-content.js?v=20261010-announcements"></script>
-<script src="js/website-settings.js?v=20261010-announcements"></script>
+<script src="../js/site-content.js?v=20261010-banner-image"></script>
+<script src="js/website-settings.js?v=20261010-banner-image"></script>
 </body>
 </html>

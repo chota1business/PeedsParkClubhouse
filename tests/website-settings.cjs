@@ -39,6 +39,8 @@ function mock(role) {
     await publicPage.goto(base+'/'+file);await publicPage.evaluate(()=>SiteContent.ready);
     assert.equal(await publicPage.locator('.whatsapp-float').getAttribute('href'),'https://wa.me/'+number);
     assert.equal(await publicPage.evaluate(id=>SiteContent.whatsappFor(id),id),number);
+    assert.equal(await publicPage.locator('[data-facility-whatsapp]').getAttribute('href'),'https://wa.me/'+number);
+    assert.match(await publicPage.locator('[data-facility-whatsapp]').innerText(),/WhatsApp:/);
     await publicPage.evaluate(id=>showBookingConfirmation('TEST-123',{facility:id,facilityLabel:'Test facility',date:'2026-10-20',dateLabel:'20 October',humanLabel:'Morning',slot:'morning'}),id);
     assert.ok((await publicPage.locator('#bookingConfirmation a.btn-primary').getAttribute('href')).startsWith('https://wa.me/'+number+'?text='));
   }
@@ -50,6 +52,10 @@ function mock(role) {
   assert.equal(await publicPage.evaluate(()=>SiteContent.announcementActive({enabled:true,start:'2026-10-10',end:'2026-10-10'},'2026-10-10')),true);
   assert.equal(await publicPage.evaluate(()=>SiteContent.announcementActive({enabled:true,start:'2026-10-11'},'2026-10-10')),false);
   assert.equal(await publicPage.evaluate(()=>SiteContent.announcementActive({enabled:true,end:'2026-10-09'},'2026-10-10')),false);
+  await publicPage.evaluate(()=>SiteContent.apply({...SiteContent.current,announcement:{...SiteContent.current.announcement,enabled:true,imageOnly:true,title:'',scope:'all',image:{src:'images/lawn1.jpeg',alt:'Event poster'}}}));
+  assert.equal(await publicPage.locator('#siteAnnouncement img').getAttribute('alt'),'Event poster');assert.equal(await publicPage.locator('#siteAnnouncement h2').count(),0);assert.equal(await publicPage.locator('#siteAnnouncement a').count(),0);
+  assert.equal(await publicPage.evaluate(()=>{try{SiteContent.validate({...SiteContent.current,announcement:{...SiteContent.current.announcement,image:null}});return false;}catch{return true;}}),true);
+  await publicPage.evaluate(()=>SiteContent.apply({...SiteContent.current,announcement:{...SiteContent.current.announcement,imageOnly:false,enabled:false}}));
   assert.equal(await publicPage.evaluate(()=>SiteContent.safeLink('javascript:alert(1)')),false);
   assert.equal(await publicPage.evaluate(()=>SiteContent.safeLink('//example.com')),false);
   assert.equal(await publicPage.evaluate(()=>{try{SiteContent.validate({...SiteContent.current,announcement:{...SiteContent.current.announcement,start:'2026-10-11',end:'2026-10-10'}});return false;}catch{return true;}}),true);
