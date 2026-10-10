@@ -29,3 +29,7 @@ Website Settings provides three optional WhatsApp numbers: Halls and Lawn (AC Ha
 Facility floating WhatsApp buttons, booking request messages, and enquiries with a selected facility use the matching group number. General enquiries use the general WhatsApp number.
 
 After a successful approval or creation/conversion of an already-confirmed booking, the admin sees Send confirmation on WhatsApp. The prepared customer message contains name, facility, reference, date and slot/time. Indian ten-digit customer numbers are prefixed with 91. The admin reviews and sends in WhatsApp using the facility account; a link cannot select the sender account or prove delivery. There is no automatic sending. Failed approvals do not offer a confirmation.
+
+## Announcements and Events
+
+Manage one announcement below the public navigation in Website Settings. Add a title/message, choose homepage or all public pages, optional uploaded image/description, and an optional button with a HTTPS or local website link. Start/end dates use Asia/Kolkata and include the entire end date; blank dates mean no limit. Hide via Show announcement. Preview displays the actual banner and whether it is hidden, scheduled, active or expired. Publish uses the existing admin-only settings, history and version checks. Existing settings default to no banner. Staging and production content are separate.
