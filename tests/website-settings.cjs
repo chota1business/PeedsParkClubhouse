@@ -37,10 +37,20 @@ function mock(role) {
   for(const file of ['club-house.html','pool.html','badminton.html','ac-hall.html','non-ac-hall.html','lawn.html','privacy-policy.html']){await publicPage.goto(base+'/'+file);await publicPage.evaluate(()=>SiteContent.ready);assert.equal(await publicPage.locator('[data-contact-email="0"]').first().innerText(),'office@example.com');}
   for (const [file,id,number] of [['ac-hall.html','ac_hall','919000000011'],['non-ac-hall.html','non_ac_hall','919000000011'],['lawn.html','lawn','919000000011'],['pool.html','pool','919000000022'],['badminton.html','badminton_2','919000000033']]) {
     await publicPage.goto(base+'/'+file);await publicPage.evaluate(()=>SiteContent.ready);
-    assert.equal(await publicPage.locator('.whatsapp-float').getAttribute('href'),'https://wa.me/'+number);
+    assert.equal(await publicPage.locator('.whatsapp-float').count(),0);
+    assert.equal(await publicPage.locator('.hero-actions [data-facility-whatsapp]').getAttribute('href'),'https://wa.me/'+number);
+    assert.equal(await publicPage.locator('.hero-actions [data-facility-whatsapp]').innerText(),'');
+    assert.ok((await publicPage.locator('.contact-mini [data-facility-whatsapp]').innerText()).trim().length>0);
     assert.equal(await publicPage.evaluate(id=>SiteContent.whatsappFor(id),id),number);
-    assert.equal(await publicPage.locator('[data-facility-whatsapp]').getAttribute('href'),'https://wa.me/'+number);
-    assert.match(await publicPage.locator('[data-facility-whatsapp]').innerText(),/WhatsApp:/);
+    for(const contact of await publicPage.locator('[data-facility-whatsapp]').all()){
+      assert.equal(await contact.getAttribute('href'),'https://wa.me/'+number);
+      assert.equal(await contact.locator('img').getAttribute('src'),'images/whatsapp.svg');
+      assert.doesNotMatch(await contact.innerText(),/WhatsApp:|💬/);
+      assert.ok((await contact.getAttribute('aria-label')).startsWith('WhatsApp '));
+    }
+    assert.equal(await publicPage.locator('.footer-contact-layout>div').count(),3);
+    assert.equal(await publicPage.locator('.footer-contact-layout>div').nth(1).locator('.footer-link').count(),1);
+    assert.equal(await publicPage.locator('.footer-contact-layout>div').nth(2).locator('[data-contact-email]').count(),2);
     await publicPage.evaluate(id=>showBookingConfirmation('TEST-123',{facility:id,facilityLabel:'Test facility',date:'2026-10-20',dateLabel:'20 October',humanLabel:'Morning',slot:'morning'}),id);
     assert.ok((await publicPage.locator('#bookingConfirmation a.btn-primary').getAttribute('href')).startsWith('https://wa.me/'+number+'?text='));
   }

@@ -460,6 +460,15 @@ footer{background:#315f88;color:#ffffff;padding:25px 0}
 .footer-link:hover{opacity:1}
 .contact-emails{margin:12px 0 0;line-height:1.8;overflow-wrap:anywhere}
 .contact-emails a{color:inherit;text-decoration:underline}
+.site-footer .footer-contact-layout{display:grid;grid-template-columns:auto auto auto;align-items:start;gap:16px 30px;line-height:1.8}
+.footer-contact-layout .contact-emails{margin:0}
+.whatsapp-icon{width:24px;height:24px;flex-shrink:0}
+.whatsapp-hero-link{display:inline-flex;align-items:center;justify-content:center;min-width:48px;min-height:48px;align-self:center}
+.whatsapp-hero-link .whatsapp-icon{width:48px;height:48px}
+.whatsapp-hero-link:hover{transform:scale(1.06)}
+.whatsapp-hero-link:focus-visible{outline:3px solid #fff;outline-offset:4px;border-radius:8px}
+[data-facility-whatsapp],[data-whatsapp-number]{display:inline-flex;align-items:center;gap:8px}
+@media(max-width:760px){.site-footer .footer-contact-layout{grid-template-columns:1fr;gap:16px}}
 
 /* WhatsApp floating button */
 .whatsapp-float {
