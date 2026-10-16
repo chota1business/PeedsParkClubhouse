@@ -68,6 +68,11 @@ def build(root, output, environment, sha, url, key, run_id="local"):
         if path.is_symlink():
             raise ValueError("Symlinks cannot be published")
         shutil.copyfile(path, output / path.name)
+    sitemap = root / "sitemap.xml"
+    if sitemap.is_file():
+        if sitemap.is_symlink():
+            raise ValueError("Symlinks cannot be published")
+        shutil.copyfile(sitemap, output / "sitemap.xml")
     config = {"SUPABASE_URL": url, "SUPABASE_ANON_KEY": key}
     (output / "config.js").write_text("window.CONFIG = " + json.dumps(config) + ";\n", encoding="utf-8")
     (output / ".nojekyll").touch()
